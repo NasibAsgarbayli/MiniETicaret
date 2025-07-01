@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MiniETicaret.Domain.Entities;
 using MiniETicaret.Persistence.Contexts;
+using MiniETicaret.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,7 @@ builder.Services.AddDbContext<MiniETicaretDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default"));
 
 });
+builder.Services.RegisterService();
 
 builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
 {

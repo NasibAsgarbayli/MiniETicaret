@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MiniETicaret.Persistence.Contexts;
 
@@ -11,9 +12,11 @@ using MiniETicaret.Persistence.Contexts;
 namespace MiniETicaret.Persistence.Migrations
 {
     [DbContext(typeof(MiniETicaretDbContext))]
-    partial class MiniETicaretDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250701163058_ChangesonProduct")]
+    partial class ChangesonProduct
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -242,9 +245,6 @@ namespace MiniETicaret.Persistence.Migrations
                     b.Property<Guid?>("CreatedUser")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -271,9 +271,6 @@ namespace MiniETicaret.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("AddedAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -350,25 +347,13 @@ namespace MiniETicaret.Persistence.Migrations
                     b.Property<Guid?>("CreatedUser")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("DeliveryAddress")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Note")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateTime>("OrderDate")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("PaymentMethod")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
-
-                    b.Property<decimal?>("TotalPrice")
-                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -422,12 +407,6 @@ namespace MiniETicaret.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<double?>("AverageRating")
-                        .HasColumnType("float");
-
-                    b.Property<string>("Barcode")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<Guid>("CategoryId")
                         .HasColumnType("uniqueidentifier");
 
@@ -442,17 +421,11 @@ namespace MiniETicaret.Persistence.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Price")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Stock")
                         .HasColumnType("int");
 
                     b.Property<string>("Title")
@@ -485,9 +458,6 @@ namespace MiniETicaret.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime?>("ApprovedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasMaxLength(1000)
@@ -498,9 +468,6 @@ namespace MiniETicaret.Persistence.Migrations
 
                     b.Property<Guid?>("CreatedUser")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("IsApproved")
-                        .HasColumnType("bit");
 
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uniqueidentifier");
