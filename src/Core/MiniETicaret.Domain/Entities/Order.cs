@@ -6,4 +6,5 @@ public class Order:BaseEntity
     public string Status { get; set; }
 
     public ICollection<OrderProduct> OrderProducts { get; set; }
+    public ICollection<AppUser> AppUsers { get; set; }
 }
