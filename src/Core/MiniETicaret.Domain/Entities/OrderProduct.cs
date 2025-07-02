@@ -8,7 +8,8 @@ namespace MiniETicaret.Domain.Entities;
 
 public class OrderProduct:BaseEntity
 {
-
+    public int ProductCount { get; set; }
+    public decimal ProductPrice { get; set; }
     public Guid OrderId { get; set; }
     public Order Order { get; set; }
 

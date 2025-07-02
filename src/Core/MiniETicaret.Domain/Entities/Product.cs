@@ -12,7 +12,7 @@ public class Product : BaseEntity
     public double? AverageRating { get; set; }     // Orta rəy balı (hesablanır)
     public string Title { get; set; }
     public string Description { get; set; }
-    public int Price { get; set; }
+    public decimal Price { get; set; }
 
     public AppUser AppUser { get; set; }
     public string UserId { get; set; }

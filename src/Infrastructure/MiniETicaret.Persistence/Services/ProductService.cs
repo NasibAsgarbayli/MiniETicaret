@@ -103,7 +103,7 @@ public class ProductService : IProductService
             Id = product.Id,
             Title = product.Title,
             Description = product.Description,
-            Price = product.Price,
+            Price =product.Price,
             CategoryId = product.CategoryId,
             ImageUrl = product.Images?.FirstOrDefault()?.ImageUrl,
           
