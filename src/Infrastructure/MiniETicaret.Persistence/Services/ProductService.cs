@@ -18,7 +18,7 @@ public class ProductService : IProductService
 
     public async Task<BaseResponse<string>> AddAsync(ProductCreateDto dto, string userId)
     {
-        // Eyni adda məhsul varsa, error qaytar
+      
         var exists = await _productRepository
             .GetByFiltered(p => p.Title.Trim().ToLower() == dto.Title.Trim().ToLower() && p.UserId == userId)
             .FirstOrDefaultAsync();
@@ -33,7 +33,9 @@ public class ProductService : IProductService
             Price = dto.Price,
             CategoryId = dto.CategoryId,
             UserId = userId,
-            // Əgər ImageUrl varsa, burdan əlavə Image entity yaradıla bilər
+            ImageUrl = dto.ImageUrl
+
+            
         };
 
         await _productRepository.AddAsync(product);
@@ -41,7 +43,7 @@ public class ProductService : IProductService
         return new BaseResponse<string>("Məhsul uğurla əlavə olundu", HttpStatusCode.Created);
     }
 
-    // 2. Məhsulu sil (yalnız sahibi)
+   
     public async Task<BaseResponse<string>> DeleteAsync(Guid id, string userId)
     {
         var product = await _productRepository.GetByIdAsync(id);
@@ -58,7 +60,6 @@ public class ProductService : IProductService
         return new BaseResponse<string>("Məhsul silindi", HttpStatusCode.OK);
     }
 
-    // 3. Məhsulu yenilə (yalnız sahibi)
     public async Task<BaseResponse<string>> UpdateAsync(ProductUpdateDto dto, string userId)
     {
         var product = await _productRepository.GetByIdAsync(dto.Id);
@@ -69,7 +70,7 @@ public class ProductService : IProductService
         if (product.UserId != userId)
             return new BaseResponse<string>("Bu məhsulu yeniləmək hüququnuz yoxdur", HttpStatusCode.Forbidden);
 
-        // Eyni adda başqa məhsul yoxdursa davam et
+      
         var exists = await _productRepository
             .GetByFiltered(p => p.Title.Trim().ToLower() == dto.Title.Trim().ToLower() && p.Id != dto.Id && p.UserId == userId)
             .FirstOrDefaultAsync();
@@ -81,7 +82,7 @@ public class ProductService : IProductService
         product.Description = dto.Description;
         product.Price = dto.Price;
         product.CategoryId = dto.CategoryId;
-        // Əgər ImageUrl və ya başqa propertilər əlavə etmək istəyirsənsə, burada doldur
+       
 
         _productRepository.Update(product);
         await _productRepository.SaveChangeAsync();
@@ -89,7 +90,7 @@ public class ProductService : IProductService
         return new BaseResponse<string>("Məhsul uğurla yeniləndi", HttpStatusCode.OK);
     }
 
-    // 4. ID ilə məhsulun detallarını gətir
+  
     public async Task<BaseResponse<ProductGetDto>> GetByIdAsync(Guid id)
     {
         var product = await _productRepository.GetByIdAsync(id);
@@ -111,7 +112,7 @@ public class ProductService : IProductService
         return new BaseResponse<ProductGetDto>("Məhsul tapıldı", dto, HttpStatusCode.OK);
     }
 
-    // 5. Bütün məhsullar (filtrsiz)
+   
     public async Task<BaseResponse<List<ProductGetDto>>> GetAllAsync()
     {
         var products = await _productRepository.GetAll().ToListAsync();
@@ -133,7 +134,7 @@ public class ProductService : IProductService
         return new BaseResponse<List<ProductGetDto>>("Bütün məhsullar", dtoList, HttpStatusCode.OK);
     }
 
-    // 6. Filterə əsasən məhsullar
+  
     public async Task<BaseResponse<List<ProductGetDto>>> GetAllFilteredAsync(ProductFilterDto filter)
     {
         var query = _productRepository.GetAll();
@@ -168,7 +169,6 @@ public class ProductService : IProductService
         return new BaseResponse<List<ProductGetDto>>("Filterə uyğun məhsullar", dtoList, HttpStatusCode.OK);
     }
 
-    // 7. Aktiv istifadəçinin (saticinin) məhsulları
     public async Task<BaseResponse<List<ProductGetDto>>> GetMyProductsAsync(string userId)
     {
         var products = await _productRepository.GetByFiltered(p => p.UserId == userId).ToListAsync();

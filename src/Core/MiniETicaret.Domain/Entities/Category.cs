@@ -3,7 +3,7 @@
 public class Category:BaseEntity
 {
     public string Name { get; set; } = null!;
-    public string? Description { get; set; } // Kateqoriya haqqında
+    public string? Description { get; set; } 
 
     public Guid? ParentCategoryId { get; set; }
     public Category ParentCategory { get; set; }

@@ -4,6 +4,7 @@ namespace MiniETicaret.Domain.Entities;
 
 public class Product : BaseEntity
 {
+    public string ImageUrl { get; set; }
     public string Name { get; set; }
     public int Stock { get; set; }                 // Anbarda olan say
     public bool IsActive { get; set; } = true;     // Məhsulun aktiv/satışda olması
