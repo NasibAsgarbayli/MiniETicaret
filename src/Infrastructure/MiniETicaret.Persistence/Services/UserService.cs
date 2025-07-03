@@ -1,8 +1,10 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MiniETicaret.Application.Abstracts.Services;
 using MiniETicaret.Application.DTOs.UserDtos;
@@ -14,14 +16,14 @@ namespace MiniETicaret.Persistence.Services;
 
 public class UserService : IUserService
 {
-    private UserManager<AppUser> _userManager { get;  }
+    private UserManager<AppUser> _userManager { get; }
     private readonly SignInManager<AppUser> _signInManager;
     private readonly JwtSettings _jwtSetting;
-    public UserService(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, JwtSettings jwtSetting)
+    public UserService(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IOptions<JwtSettings> jwtSetting)
     {
         _userManager = userManager;
         _signInManager = signInManager;
-        _jwtSetting = jwtSetting;
+        _jwtSetting = jwtSetting.Value;
     }
 
     public async Task<BaseResponse<string>> Register(UserRegisterDto dto)
@@ -35,7 +37,7 @@ public class UserService : IUserService
         {
             Email = dto.Email,
             Fullname = dto.Fullname,
-            UserName=dto.Email,
+            UserName = dto.Email,
 
         };
 
@@ -50,18 +52,18 @@ public class UserService : IUserService
             }
             return new(errorMassege.ToString(), HttpStatusCode.BadRequest);
         }
-        return new("Succesfuly Created",HttpStatusCode.Created);
+        return new("Succesfuly Created", HttpStatusCode.Created);
     }
 
     public async Task<BaseResponse<TokenResponse>> Login(UserLoginDto dto)
     {
 
-        var existedEmail = await _userManager.FindByEmailAsync(dto.Email);
-        if (existedEmail is null)
+        var existedUser = await _userManager.FindByEmailAsync(dto.Email);
+        if (existedUser is null)
         {
             return new("Email or password os wrong.", HttpStatusCode.NotFound);
         }
-    
+
 
         SignInResult signInResult = await _signInManager.PasswordSignInAsync
             (dto.Email, dto.Password, true, true);
@@ -69,41 +71,129 @@ public class UserService : IUserService
         {
             return new("Email or password os wrong.", null, HttpStatusCode.NotFound);
         }
-        var token = GenerateJwtToken(dto.Email);
-        var expires = DateTime.UtcNow.AddMinutes(_jwtSetting.ExpiryMinutes);
-        TokenResponse tokenResponse = new()
-        {
-            Token = token,
-            ExpireDate = expires
-        };
-        return new("Token generated", tokenResponse, HttpStatusCode.OK);
+        var token = await GenerateTokensAsync(existedUser);
+        return new("Token generated", token, HttpStatusCode.OK);
     }
 
 
 
-    public string GenerateJwtToken(string userEmail)
+    private async Task<TokenResponse> GenerateTokensAsync(AppUser user)
     {
-        var claims = new[]
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.UTF8.GetBytes(_jwtSetting.SecretKey);
+
+        var claims = new List<Claim>
         {
-        new Claim(ClaimTypes.Email, userEmail),
-        new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
-    };
+            new Claim(ClaimTypes.NameIdentifier, user.Id),
+            new Claim(ClaimTypes.Email, user.Email!)
+        };
+        //var roles = await _userManager.GetRolesAsync(user);
+        //foreach (var roleName in roles)
+        //{
+        //    claims.Add(new Claim(ClaimTypes.Role, roleName));
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSetting.SecretKey));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        //    var role = await _roleManager.FindByNameAsync(roleName);
+        //    if (role != null)
+        //    {
+        //        var roleClaims = await _roleManager.GetClaimsAsync(role);
+        //        var permissionClaims = roleClaims.Where(c => c.Type == "Permission").Distinct();
 
-        var token = new JwtSecurityToken(
-            issuer: _jwtSetting.Issuer,
-            audience: _jwtSetting.Audience,
-            claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(_jwtSetting.ExpiryMinutes),
-            signingCredentials: creds
-        );
+        //        foreach (var permissionClaim in permissionClaims)
+        //        {
+        //            claims.Add(new Claim("Permission", permissionClaim.Value));
+        //        }
+        //    }
+        //}
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(claims),
+            Expires = DateTime.UtcNow.AddMinutes(_jwtSetting.ExpiryMinutes),
+            Issuer = _jwtSetting.Issuer,
+            Audience = _jwtSetting.Audience,
+            SigningCredentials = new SigningCredentials(
+                new SymmetricSecurityKey(key),
+                SecurityAlgorithms.HmacSha256Signature)
+        };
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        var jwt = tokenHandler.WriteToken(token);
+
+
+        var refreshToken = GenerateRefreshToken();
+        var refreshTokenExpiryDate = DateTime.UtcNow.AddHours(2);
+        user.RefreshToken = refreshToken;
+        user.ExpireDate = refreshTokenExpiryDate;
+        await _userManager.UpdateAsync(user);
+
+        return new TokenResponse
+        {
+            Token = jwt,
+            RefreshToken = refreshToken,
+            ExpireDate = tokenDescriptor.Expires!.Value,
+        };
+    }
+    private string GenerateRefreshToken()
+    {
+        var randomNumber = new byte[32];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomNumber);
+        return Convert.ToBase64String(randomNumber);
     }
 
+    private ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
+    {
+        var tokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateAudience = true,
+            ValidateIssuer = true,
+            ValidateIssuerSigningKey = true,
+            ValidateLifetime = false, // expired token üçün bu false olmalıdır
 
+            ValidIssuer = _jwtSetting.Issuer,
+            ValidAudience = _jwtSetting.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSetting.SecretKey))
+        };
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+        try
+        {
+            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out var securityToken);
+            if (securityToken is JwtSecurityToken jwtSecurityToken &&
+                jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+            {
+                return principal;
+            }
+        }
+        catch
+        {
+            return null;
+        }
+
+        return null;
+    }
+    public async Task<BaseResponse<TokenResponse>> RefreshTokenAsync(RefreshTokenRequest request)
+    {
+        var principal = GetPrincipalFromExpiredToken(request.AccessToken);
+        if (principal == null)
+            return new("Invalid access token", null, HttpStatusCode.BadRequest);
+
+        var userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var user = await _userManager.FindByIdAsync(userId!);
+
+        if (user == null)
+            return new("User not faund", null, HttpStatusCode.NotFound);
+
+
+
+        if (user.RefreshToken is null || user.RefreshToken != request.RefreshToken ||
+            user.ExpireDate < DateTime.UtcNow)
+            return new("Invalid refresh token", null, HttpStatusCode.BadRequest);
+
+
+        //Generate new tokens
+        var tokenResponse = await GenerateTokensAsync(user);
+        return new("Refreshed", tokenResponse, HttpStatusCode.OK);
+    }
 
 
 

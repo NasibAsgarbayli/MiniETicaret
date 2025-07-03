@@ -26,6 +26,27 @@ namespace MiniETicaret.WebApi.Controllers
             var result = await _userService.Register(dto);
             return StatusCode((int)result.StatusCode, result);
         }
+        [HttpPost]
+        [ProducesResponseType(typeof(BaseResponse<TokenResponse>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.NotFound)]
+        [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.InternalServerError)]
+        public async Task<IActionResult> Login([FromBody] UserLoginDto dto)
+        {
+            var result = await _userService.Login(dto);
+            return StatusCode((int)result.StatusCode, result);
+        }
+
+        [HttpPost]
+        [ProducesResponseType(typeof(BaseResponse<TokenResponse>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.NotFound)]
+        [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.InternalServerError)]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest dto)
+        {
+            var result = await _userService.RefreshTokenAsync(dto);
+            return StatusCode((int)result.StatusCode, result);
+        }
+
 
 
         [HttpGet]

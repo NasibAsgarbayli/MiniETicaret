@@ -30,9 +30,14 @@ namespace MiniETicaret.Persistence.Configurations
                 .WithOne(p => p.AppUser)
                 .HasForeignKey(p => p.UserId);
 
+           // builder.HasOne(u => u.Order)
+           //.WithMany(o => o.AppUsers)
+           //.HasForeignKey(u => u.OrderId);
+
             builder.HasOne(u => u.Order)
-           .WithMany(o => o.AppUsers)
-           .HasForeignKey(u => u.OrderId);
+            .WithMany(o => o.AppUsers)
+            .HasForeignKey(u => u.OrderId)
+            .IsRequired(false); // <-- Əlavə et!
 
         }
     }
