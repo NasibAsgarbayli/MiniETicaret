@@ -15,15 +15,19 @@ using MiniETicaret.Domain.Entities;
 namespace MiniETicaret.Persistence.Services;
 
 public class UserService : IUserService
+
 {
     private UserManager<AppUser> _userManager { get; }
     private readonly SignInManager<AppUser> _signInManager;
     private readonly JwtSettings _jwtSetting;
-    public UserService(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IOptions<JwtSettings> jwtSetting)
+
+    private readonly RoleManager<IdentityRole> _roleManager;
+    public UserService(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IOptions<JwtSettings> jwtSetting, RoleManager<IdentityRole> roleManager)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _jwtSetting = jwtSetting.Value;
+        _roleManager = roleManager; 
     }
 
     public async Task<BaseResponse<string>> Register(UserRegisterDto dto)
@@ -87,23 +91,23 @@ public class UserService : IUserService
             new Claim(ClaimTypes.NameIdentifier, user.Id),
             new Claim(ClaimTypes.Email, user.Email!)
         };
-        //var roles = await _userManager.GetRolesAsync(user);
-        //foreach (var roleName in roles)
-        //{
-        //    claims.Add(new Claim(ClaimTypes.Role, roleName));
+        var roles = await _userManager.GetRolesAsync(user);
+        foreach (var roleName in roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, roleName));
 
-        //    var role = await _roleManager.FindByNameAsync(roleName);
-        //    if (role != null)
-        //    {
-        //        var roleClaims = await _roleManager.GetClaimsAsync(role);
-        //        var permissionClaims = roleClaims.Where(c => c.Type == "Permission").Distinct();
+            var role = await _roleManager.FindByNameAsync(roleName);
+            if (role != null)
+            {
+                var roleClaims = await _roleManager.GetClaimsAsync(role);
+                var permissionClaims = roleClaims.Where(c => c.Type == "Permission").Distinct();
 
-        //        foreach (var permissionClaim in permissionClaims)
-        //        {
-        //            claims.Add(new Claim("Permission", permissionClaim.Value));
-        //        }
-        //    }
-        //}
+                foreach (var permissionClaim in permissionClaims)
+                {
+                    claims.Add(new Claim("Permission", permissionClaim.Value));
+                }
+            }
+        }
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
@@ -195,6 +199,41 @@ public class UserService : IUserService
         return new("Refreshed", tokenResponse, HttpStatusCode.OK);
     }
 
+
+    public async Task<BaseResponse<string>> AddRole(UserAddRoleDto dto)
+    {
+        var user = await _userManager.FindByIdAsync(dto.UserId.ToString());
+        if (user is null)
+        {
+            return new BaseResponse<string>("User not found", HttpStatusCode.NotFound);
+        }
+
+        var roleNames = new List<string>();
+
+        foreach (var roleId in dto.RoleId.Distinct())
+        {
+            var role = await _roleManager.FindByIdAsync(roleId.ToString());
+            if (role is null)
+            {
+                return new BaseResponse<string>($"Role With Id'{roleId}' not found", HttpStatusCode.NotFound);
+            }
+
+            if (!await _userManager.IsInRoleAsync(user, role.Name!))
+            {
+                var result = await _userManager.AddToRoleAsync(user, role.Name!);
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    return new BaseResponse<string>($"Failed to add role '{role.Name}'to user:{errors}", HttpStatusCode.BadRequest);
+                }
+                roleNames.Add(role.Name!);
+            }
+
+
+        }
+        return new BaseResponse<string>($"Succesfuly added roles:{string.Join(", ", roleNames)}", HttpStatusCode.OK);
+
+    }
 
 
 }

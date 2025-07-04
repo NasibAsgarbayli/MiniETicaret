@@ -48,33 +48,15 @@ namespace MiniETicaret.WebApi.Controllers
         }
 
 
-
-        [HttpGet]
-        public IEnumerable<string> Get()
+        [HttpPost("assign-roles")]
+        [ProducesResponseType(typeof(BaseResponse<TokenResponse>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.NotFound)]
+        [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.InternalServerError)]
+        public async Task<IActionResult> AddRole([FromBody] UserAddRoleDto dto)
         {
-            return new string[] { "value1", "value2" };
+            var result = await _userService.AddRole(dto);
+            return StatusCode((int)result.StatusCode, result);
         }
 
-        // GET api/<AccountsController>/5
-        [HttpGet("{id}")]
-        public string Get(int id)
-        {
-            return "value";
-        }
-
-        // POST api/<AccountsController>
- 
-
-        // PUT api/<AccountsController>/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
-        {
-        }
-
-        // DELETE api/<AccountsController>/5
-        [HttpDelete("{id}")]
-        public void Delete(int id)
-        {
-        }
     }
 }

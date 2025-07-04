@@ -16,10 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Middlewares\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\Infrastructure\MiniETicaret.Infrastructure\MiniETicaret.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Infrastructure\MiniETicaret.Persistence\MiniETicaret.Persistence.csproj" />
   </ItemGroup>
