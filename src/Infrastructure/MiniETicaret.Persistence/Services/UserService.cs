@@ -3,6 +3,7 @@ using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Web;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -20,19 +21,26 @@ public class UserService : IUserService
     private UserManager<AppUser> _userManager { get; }
     private readonly SignInManager<AppUser> _signInManager;
     private readonly JwtSettings _jwtSetting;
+    private readonly IEmailService _mailService;
 
     private readonly RoleManager<IdentityRole> _roleManager;
-    public UserService(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IOptions<JwtSettings> jwtSetting, RoleManager<IdentityRole> roleManager)
+    public UserService(UserManager<AppUser> userManager, 
+        SignInManager<AppUser> signInManager, 
+        IOptions<JwtSettings> jwtSetting, 
+        RoleManager<IdentityRole> roleManager,
+        IEmailService mailService)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _jwtSetting = jwtSetting.Value;
-        _roleManager = roleManager; 
+        _roleManager = roleManager;
+        _mailService = mailService;
     }
+
 
     public async Task<BaseResponse<string>> Register(UserRegisterDto dto)
     {
-        var existedEmail = await _userManager.FindByIdAsync(dto.Email);
+        var existedEmail = await _userManager.FindByEmailAsync(dto.Email);
         if (existedEmail is not null)
         {
             return new BaseResponse<string>("This account already exist", HttpStatusCode.BadRequest);
@@ -56,6 +64,12 @@ public class UserService : IUserService
             }
             return new(errorMassege.ToString(), HttpStatusCode.BadRequest);
         }
+        var roleName=dto.Role.ToString();
+        await _userManager.AddToRoleAsync(newUser, roleName);
+        string confirmEmailLink = await GetEmailConfirmLink(newUser);
+        await _mailService.SendEmailAsync(new List<string> { newUser.Email },"Email Confirmation",
+            confirmEmailLink);
+     
         return new("Succesfuly Created", HttpStatusCode.Created);
     }
 
@@ -67,7 +81,10 @@ public class UserService : IUserService
         {
             return new("Email or password os wrong.", HttpStatusCode.NotFound);
         }
-
+        if (!existedUser.EmailConfirmed)
+        {
+            return new("Please Confirm your email", HttpStatusCode.BadRequest);
+        }
 
         SignInResult signInResult = await _signInManager.PasswordSignInAsync
             (dto.Email, dto.Password, true, true);
@@ -77,6 +94,21 @@ public class UserService : IUserService
         }
         var token = await GenerateTokensAsync(existedUser);
         return new("Token generated", token, HttpStatusCode.OK);
+    }
+
+    public async Task<BaseResponse<string>> ConfirmEmail(string userId, string token)
+    {
+        var existedUser = await _userManager.FindByIdAsync(userId);
+        if (existedUser is null)
+        {
+            return new("Email confirmation failed", HttpStatusCode.NotFound);
+        }
+        var result = await _userManager.ConfirmEmailAsync(existedUser, token);
+        if (!result.Succeeded)
+        {
+            return new("Email confirmation failed", HttpStatusCode.BadRequest);
+        }
+        return new("Email confirmed successfully", null, HttpStatusCode.OK);
     }
 
 
@@ -233,6 +265,15 @@ public class UserService : IUserService
         }
         return new BaseResponse<string>($"Succesfuly added roles:{string.Join(", ", roleNames)}", HttpStatusCode.OK);
 
+    }
+
+    private async Task<string> GetEmailConfirmLink(AppUser user)
+    {
+        var token=await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        var link = $"https://localhost:7235/api/Accounts/ConfirmEmail?userId={user.Id}&token={HttpUtility.UrlEncode(token)}";
+        Console.WriteLine("Confirm Email Link: " + link);
+        return link;
+    
     }
 
 

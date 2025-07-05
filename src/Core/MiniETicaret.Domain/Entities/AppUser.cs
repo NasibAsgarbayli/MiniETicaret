@@ -5,7 +5,7 @@ namespace MiniETicaret.Domain.Entities;
 public class AppUser:IdentityUser
 {
     public string Fullname { get; set; } = null!;
-    public string RefreshToken { get; set; }
+    public string? RefreshToken { get; set; }
     public DateTime ExpireDate { get; set; }
 
 

@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using MiniETicaret.Application.Abstracts.Repositories;
 using MiniETicaret.Application.Abstracts.Services;
+using MiniETicaret.Infrastructure.Services;
 using MiniETicaret.Persistence.Repositories;
 using MiniETicaret.Persistence.Services;
 
@@ -24,6 +25,8 @@ public static class ServiceRegistration
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IProductService, ProductService>();
+        services.AddScoped<IEmailService, EmailService>();
+        services.AddScoped<IFileService, FileService>();
         
         #endregion
     }

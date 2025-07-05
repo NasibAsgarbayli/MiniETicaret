@@ -74,6 +74,7 @@ builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
     .AddEntityFrameworkStores<MiniETicaretDbContext>()
     .AddDefaultTokenProviders();
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JWTSettings"));
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
 builder.Services.AddAuthentication(options =>
 {
