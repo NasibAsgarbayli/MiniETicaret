@@ -82,4 +82,53 @@ public class RoleService : IRoleService
 
         return new BaseResponse<string?>("Role updated successfully", true, HttpStatusCode.OK);
     }
+
+
+
+  public async Task<BaseResponse<List<RoleWithPermissionsDto>>> GetAllRolesWithPermissionsAsync()
+{
+    var roleList = new List<RoleWithPermissionsDto>();
+    var roles = _rolemanager.Roles.ToList();
+
+    foreach (var role in roles)
+    {
+        var claims = await _rolemanager.GetClaimsAsync(role);
+        var permissions = claims
+            .Where(c => c.Type == "Permission")
+            .Select(c => c.Value)
+            .Distinct()
+            .ToList();
+
+        roleList.Add(new RoleWithPermissionsDto
+        {
+            Name = role.Name!,
+            Permissions = permissions
+        });
+    }
+
+    return new BaseResponse<List<RoleWithPermissionsDto>>("Role list with permissions returned successfully", roleList,  HttpStatusCode.OK);
+}
+
+
+
+
+
+    public async Task<BaseResponse<string?>> DeleteRoleAsync(string roleName)
+    {
+        var role = await _rolemanager.FindByNameAsync(roleName);
+        if (role == null)
+            return new BaseResponse<string?>("Role not found", HttpStatusCode.NotFound);
+
+        var result = await _rolemanager.DeleteAsync(role);
+        if (!result.Succeeded)
+        {
+            var errorMessages = string.Join(", ", result.Errors.Select(e => e.Description));
+            return new BaseResponse<string?>(errorMessages, HttpStatusCode.BadRequest);
+        }
+
+        return new BaseResponse<string?>("Role deleted successfully", true, HttpStatusCode.OK);
+    }
+
+
+
 }

@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Web;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MiniETicaret.Application.Abstracts.Services;
 using MiniETicaret.Application.DTOs.UserDtos;
@@ -66,11 +67,23 @@ namespace MiniETicaret.WebApi.Controllers
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.InternalServerError)]
         public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string token)
         {
-            //token = HttpUtility.UrlDecode(token);
+            
             var result = await _userService.ConfirmEmail(userId, token);
             return StatusCode((int)result.StatusCode, result);
 
         }
+
+
+        [HttpGet("Aboutme")]
+        [Authorize] 
+        [ProducesResponseType(typeof(BaseResponse<UserProfileInfoDto>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.Unauthorized)]
+        public async Task<IActionResult> Me()
+        {
+            var result = await _userService.GetProfileAsync(User);
+            return StatusCode((int)result.StatusCode, result);
+        }
+
 
     }
 }

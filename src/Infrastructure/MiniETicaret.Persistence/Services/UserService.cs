@@ -275,6 +275,29 @@ public class UserService : IUserService
         return link;
     
     }
+    public async Task<BaseResponse<UserProfileInfoDto>> GetProfileAsync(ClaimsPrincipal userPrincipal)
+    {
+        var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId == null)
+            return new("Unauthorized", null, HttpStatusCode.Unauthorized);
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return new("User not found", null, HttpStatusCode.NotFound);
+
+      
+        var roles = await _userManager.GetRolesAsync(user);
+        var profile = new UserProfileInfoDto
+        {
+            Id = user.Id,
+            Fullname = user.Fullname,
+            Email = user.Email,
+            Roles = roles.ToList()
+        };
+
+        return new("User profile fetched successfully", profile, HttpStatusCode.OK);
+    }
+
 
 
 }

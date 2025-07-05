@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using MiniETicaret.Application.Abstracts.Services;
 using MiniETicaret.Application.DTOs.RoleDtos;
 using MiniETicaret.Application.Shared.Helpers;
@@ -42,6 +43,25 @@ namespace MiniETicaret.WebApi.Controllers
             var result = await _roleService.UpdateRole(dto);
             return StatusCode((int)result.StatusCode, result);
         }
+
+
+        [HttpGet]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAllRoles()
+        {
+            var result = await _roleService.GetAllRolesWithPermissionsAsync();
+            return StatusCode((int)result.StatusCode, result);
+        }
+
+
+        [HttpDelete("{roleName}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteRole(string roleName)
+        {
+            var result = await _roleService.DeleteRoleAsync(roleName);
+            return StatusCode((int)result.StatusCode, result);
+        }
+
 
     }
 }
