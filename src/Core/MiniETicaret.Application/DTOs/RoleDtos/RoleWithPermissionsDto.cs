@@ -1,0 +1,7 @@
+﻿namespace MiniETicaret.Application.DTOs.RoleDtos;
+
+public class RoleWithPermissionsDto
+{
+    public string Name { get; set; } = null!;
+    public List<string> Permissions { get; set; } = new();
+}
