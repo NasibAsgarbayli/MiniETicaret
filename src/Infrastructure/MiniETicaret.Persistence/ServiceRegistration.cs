@@ -27,7 +27,10 @@ public static class ServiceRegistration
         services.AddScoped<IProductService, ProductService>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IFileService, FileService>();
-        
+        services.AddScoped<IAuthentication, Authentication>();
+        services.AddScoped<IReviewService, ReviewService>();
+        services.AddScoped<IFavouriteService, FavouriteService>();
+        services.AddScoped<IOrderService, OrderService>();
         #endregion
     }
 }

@@ -5,26 +5,49 @@ using MiniETicaret.Application.DTOs.CategoryDtos;
 using MiniETicaret.Application.Shared;
 using MiniETicaret.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using MiniETicaret.Persistence.Contexts;
 
 namespace MiniETicaret.Persistence.Services;
-
 public class CategoryService : ICategoryService
 {
-
-    private readonly ICategoryRepository _categoryRepository;
-
-    public CategoryService(ICategoryRepository categoryRepository)
+    private readonly MiniETicaretDbContext _context;
+    public CategoryService(MiniETicaretDbContext context)
     {
-        _categoryRepository = categoryRepository;
+        _context = context;
     }
 
-    public async Task<BaseResponse<string>> AddAsync(CategoryCreateDto dto, string userId)
+    public async Task<BaseResponse<List<CategoryGetDto>>> GetAllAsync()
     {
-        var exists = await _categoryRepository
-            .GetByFiltered(c => c.Name.Trim().ToLower() == dto.Name.Trim().ToLower())
-            .FirstOrDefaultAsync();
-        if (exists is not null)
-            return new BaseResponse<string>("This category already exists", HttpStatusCode.BadRequest);
+        var categories = await _context.Categories
+            .Where(c => c.ParentCategoryId == null)
+            .Include(c => c.SubCategories)
+            .ToListAsync();
+
+        var result = categories.Select(MapCategoryToDto).ToList();
+        return new BaseResponse<List<CategoryGetDto>>("Category retrieved succesfuly", result, HttpStatusCode.OK);
+    }
+
+    public async Task<BaseResponse<CategoryGetDto>> GetByIdAsync(Guid id)
+    {
+        var category = await _context.Categories
+            .Include(c => c.SubCategories)
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (category == null)
+            return new BaseResponse<CategoryGetDto>("Category not found", HttpStatusCode.NotFound);
+
+        var dto = MapCategoryToDto(category);
+        return new BaseResponse<CategoryGetDto>("Category retrieved succesfuly", dto, HttpStatusCode.OK);
+    }
+
+    public async Task<BaseResponse<string>> CreateAsync(CategoryCreateDto dto)
+    {
+        if (dto.ParentCategoryId.HasValue)
+        {
+            var parent = await _context.Categories.FindAsync(dto.ParentCategoryId.Value);
+            if (parent == null)
+                return new BaseResponse<string>("Parent category not found", HttpStatusCode.BadRequest);
+        }
 
         var category = new Category
         {
@@ -33,71 +56,48 @@ public class CategoryService : ICategoryService
             ParentCategoryId = dto.ParentCategoryId
         };
 
-        await _categoryRepository.AddAsync(category);
-        await _categoryRepository.SaveChangeAsync();
+        await _context.Categories.AddAsync(category);
+        await _context.SaveChangesAsync();
         return new BaseResponse<string>("Category created", HttpStatusCode.Created);
-    }
-
-    public async Task<BaseResponse<List<CategoryGetDto>>> GetAllAsync()
-    {
-        var categories = await _categoryRepository
-            .GetAll()
-            .Where(c => c.ParentCategoryId == null)
-            .Include(c => c.SubCategories)
-            .ToListAsync();
-
-        var dtoList = categories.Select(category => MapCategoryToDtoRecursive(category)).ToList();
-        return new BaseResponse<List<CategoryGetDto>>("All categories", dtoList, HttpStatusCode.OK);
     }
 
     public async Task<BaseResponse<string>> UpdateAsync(CategoryUpdateDto dto)
     {
-        var category = await _categoryRepository.GetByIdAsync(dto.Id);
-        if (category is null)
+        var category = await _context.Categories.FindAsync(dto.Id);
+        if (category == null)
             return new BaseResponse<string>("Category not found", HttpStatusCode.NotFound);
-
-        var exists = await _categoryRepository
-            .GetByFiltered(c => c.Name.Trim().ToLower() == dto.Name.Trim().ToLower() && c.Id != dto.Id)
-            .FirstOrDefaultAsync();
-        if (exists is not null)
-            return new BaseResponse<string>("This category name already exists", HttpStatusCode.BadRequest);
 
         category.Name = dto.Name;
         category.Description = dto.Description;
         category.ParentCategoryId = dto.ParentCategoryId;
 
-        await _categoryRepository.SaveChangeAsync();
-        return new BaseResponse<string>("Category updated successfully", HttpStatusCode.OK);
+        _context.Categories.Update(category);
+        await _context.SaveChangesAsync();
+
+        return new BaseResponse<string>("Category updated", HttpStatusCode.OK);
     }
 
     public async Task<BaseResponse<string>> DeleteAsync(Guid id)
     {
-        var category = await _categoryRepository.GetByIdAsync(id);
-        if (category is null)
+        var category = await _context.Categories.FindAsync(id);
+        if (category == null)
             return new BaseResponse<string>("Category not found", HttpStatusCode.NotFound);
 
-        if ((category.SubCategories != null && category.SubCategories.Any()) ||
-            (category.Products != null && category.Products.Any()))
-        {
-            return new BaseResponse<string>("You can't delete a category that has subcategories or products!", HttpStatusCode.BadRequest);
-        }
+        _context.Categories.Remove(category);
+        await _context.SaveChangesAsync();
 
-        _categoryRepository.Delete(category);
-        await _categoryRepository.SaveChangeAsync();
-        return new BaseResponse<string>("Category deleted successfully", HttpStatusCode.OK);
+        return new BaseResponse<string>("Category deleted", HttpStatusCode.OK);
     }
 
-    private CategoryGetDto MapCategoryToDtoRecursive(Category category)
+    private CategoryGetDto MapCategoryToDto(Category category)
     {
         return new CategoryGetDto
         {
             Id = category.Id,
             Name = category.Name,
             Description = category.Description,
-            ParentCategoryId = category.ParentCategoryId,
-            SubCategories = category.SubCategories?
-                .Select(MapCategoryToDtoRecursive)
-                .ToList() ?? new List<CategoryGetDto>()
+            ParentCategoryId = category.ParentCategoryId, 
+            SubCategories = category.SubCategories?.Select(MapCategoryToDto).ToList()
         };
     }
 }

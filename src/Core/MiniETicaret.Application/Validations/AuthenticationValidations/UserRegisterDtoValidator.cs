@@ -1,9 +1,10 @@
 ﻿using FluentValidation;
+using MiniETicaret.Application.DTOs.AuthenticationDtos;
 using MiniETicaret.Application.DTOs.UserDtos;
 
 namespace MiniETicaret.Application.Validations.UserValidations;
 
-public class UserRegisterDtoValidator:AbstractValidator<UserRegisterDto>
+public class UserRegisterDtoValidator:AbstractValidator<RegisterDto>
 {
     public UserRegisterDtoValidator()
     {

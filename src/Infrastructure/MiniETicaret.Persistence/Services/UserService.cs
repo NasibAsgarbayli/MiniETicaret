@@ -19,218 +19,16 @@ public class UserService : IUserService
 
 {
     private UserManager<AppUser> _userManager { get; }
-    private readonly SignInManager<AppUser> _signInManager;
-    private readonly JwtSettings _jwtSetting;
-    private readonly IEmailService _mailService;
 
     private readonly RoleManager<IdentityRole> _roleManager;
-    public UserService(UserManager<AppUser> userManager, 
-        SignInManager<AppUser> signInManager, 
-        IOptions<JwtSettings> jwtSetting, 
-        RoleManager<IdentityRole> roleManager,
-        IEmailService mailService)
+    public UserService(UserManager<AppUser> userManager,
+        RoleManager<IdentityRole> roleManager)
+    
     {
         _userManager = userManager;
-        _signInManager = signInManager;
-        _jwtSetting = jwtSetting.Value;
         _roleManager = roleManager;
-        _mailService = mailService;
+
     }
-
-
-    public async Task<BaseResponse<string>> Register(UserRegisterDto dto)
-    {
-        var existedEmail = await _userManager.FindByEmailAsync(dto.Email);
-        if (existedEmail is not null)
-        {
-            return new BaseResponse<string>("This account already exist", HttpStatusCode.BadRequest);
-        }
-        AppUser newUser = new()
-        {
-            Email = dto.Email,
-            Fullname = dto.Fullname,
-            UserName = dto.Email,
-
-        };
-
-        IdentityResult identityResult = await _userManager.CreateAsync(newUser, dto.Password);
-        if (!identityResult.Succeeded)
-        {
-            var errors = identityResult.Errors;
-            StringBuilder errorMassege = new();
-            foreach (var error in errors)
-            {
-                errorMassege.Append(error.Description + ";");
-            }
-            return new(errorMassege.ToString(), HttpStatusCode.BadRequest);
-        }
-        var roleName=dto.Role.ToString();
-        await _userManager.AddToRoleAsync(newUser, roleName);
-        string confirmEmailLink = await GetEmailConfirmLink(newUser);
-        await _mailService.SendEmailAsync(new List<string> { newUser.Email },"Email Confirmation",
-            confirmEmailLink);
-     
-        return new("Succesfuly Created", HttpStatusCode.Created);
-    }
-
-    public async Task<BaseResponse<TokenResponse>> Login(UserLoginDto dto)
-    {
-
-        var existedUser = await _userManager.FindByEmailAsync(dto.Email);
-        if (existedUser is null)
-        {
-            return new("Email or password os wrong.", HttpStatusCode.NotFound);
-        }
-        if (!existedUser.EmailConfirmed)
-        {
-            return new("Please Confirm your email", HttpStatusCode.BadRequest);
-        }
-
-        SignInResult signInResult = await _signInManager.PasswordSignInAsync
-            (dto.Email, dto.Password, true, true);
-        if (!signInResult.Succeeded)
-        {
-            return new("Email or password os wrong.", null, HttpStatusCode.NotFound);
-        }
-        var token = await GenerateTokensAsync(existedUser);
-        return new("Token generated", token, HttpStatusCode.OK);
-    }
-
-    public async Task<BaseResponse<string>> ConfirmEmail(string userId, string token)
-    {
-        var existedUser = await _userManager.FindByIdAsync(userId);
-        if (existedUser is null)
-        {
-            return new("Email confirmation failed", HttpStatusCode.NotFound);
-        }
-        var result = await _userManager.ConfirmEmailAsync(existedUser, token);
-        if (!result.Succeeded)
-        {
-            return new("Email confirmation failed", HttpStatusCode.BadRequest);
-        }
-        return new("Email confirmed successfully", null, HttpStatusCode.OK);
-    }
-
-
-
-    private async Task<TokenResponse> GenerateTokensAsync(AppUser user)
-    {
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.UTF8.GetBytes(_jwtSetting.SecretKey);
-
-        var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.Id),
-            new Claim(ClaimTypes.Email, user.Email!)
-        };
-        var roles = await _userManager.GetRolesAsync(user);
-        foreach (var roleName in roles)
-        {
-            claims.Add(new Claim(ClaimTypes.Role, roleName));
-
-            var role = await _roleManager.FindByNameAsync(roleName);
-            if (role != null)
-            {
-                var roleClaims = await _roleManager.GetClaimsAsync(role);
-                var permissionClaims = roleClaims.Where(c => c.Type == "Permission").Distinct();
-
-                foreach (var permissionClaim in permissionClaims)
-                {
-                    claims.Add(new Claim("Permission", permissionClaim.Value));
-                }
-            }
-        }
-        var tokenDescriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddMinutes(_jwtSetting.ExpiryMinutes),
-            Issuer = _jwtSetting.Issuer,
-            Audience = _jwtSetting.Audience,
-            SigningCredentials = new SigningCredentials(
-                new SymmetricSecurityKey(key),
-                SecurityAlgorithms.HmacSha256Signature)
-        };
-
-        var token = tokenHandler.CreateToken(tokenDescriptor);
-        var jwt = tokenHandler.WriteToken(token);
-
-
-        var refreshToken = GenerateRefreshToken();
-        var refreshTokenExpiryDate = DateTime.UtcNow.AddHours(2);
-        user.RefreshToken = refreshToken;
-        user.ExpireDate = refreshTokenExpiryDate;
-        await _userManager.UpdateAsync(user);
-
-        return new TokenResponse
-        {
-            Token = jwt,
-            RefreshToken = refreshToken,
-            ExpireDate = tokenDescriptor.Expires!.Value,
-        };
-    }
-    private string GenerateRefreshToken()
-    {
-        var randomNumber = new byte[32];
-        using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(randomNumber);
-        return Convert.ToBase64String(randomNumber);
-    }
-
-    private ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
-    {
-        var tokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateAudience = true,
-            ValidateIssuer = true,
-            ValidateIssuerSigningKey = true,
-            ValidateLifetime = false, // expired token üçün bu false olmalıdır
-
-            ValidIssuer = _jwtSetting.Issuer,
-            ValidAudience = _jwtSetting.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSetting.SecretKey))
-        };
-
-        var tokenHandler = new JwtSecurityTokenHandler();
-        try
-        {
-            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out var securityToken);
-            if (securityToken is JwtSecurityToken jwtSecurityToken &&
-                jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
-            {
-                return principal;
-            }
-        }
-        catch
-        {
-            return null;
-        }
-
-        return null;
-    }
-    public async Task<BaseResponse<TokenResponse>> RefreshTokenAsync(RefreshTokenRequest request)
-    {
-        var principal = GetPrincipalFromExpiredToken(request.AccessToken);
-        if (principal == null)
-            return new("Invalid access token", null, HttpStatusCode.BadRequest);
-
-        var userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var user = await _userManager.FindByIdAsync(userId!);
-
-        if (user == null)
-            return new("User not faund", null, HttpStatusCode.NotFound);
-
-
-
-        if (user.RefreshToken is null || user.RefreshToken != request.RefreshToken ||
-            user.ExpireDate < DateTime.UtcNow)
-            return new("Invalid refresh token", null, HttpStatusCode.BadRequest);
-
-
-        //Generate new tokens
-        var tokenResponse = await GenerateTokensAsync(user);
-        return new("Refreshed", tokenResponse, HttpStatusCode.OK);
-    }
-
 
     public async Task<BaseResponse<string>> AddRole(UserAddRoleDto dto)
     {
@@ -267,36 +65,38 @@ public class UserService : IUserService
 
     }
 
-    private async Task<string> GetEmailConfirmLink(AppUser user)
+
+    public async Task<BaseResponse<List<UserGetDto>>> GetAllAsync()
     {
-        var token=await _userManager.GenerateEmailConfirmationTokenAsync(user);
-        var link = $"https://localhost:7235/api/Accounts/ConfirmEmail?userId={user.Id}&token={HttpUtility.UrlEncode(token)}";
-        Console.WriteLine("Confirm Email Link: " + link);
-        return link;
-    
+        var users = _userManager.Users.Select(u => new UserGetDto
+        {
+            Id = u.Id,
+            FullName = u.Fullname,
+            Email = u.Email,
+          
+        }).ToList();
+
+        return new BaseResponse<List<UserGetDto>>("All Users:",users, HttpStatusCode.OK);
+
     }
-    public async Task<BaseResponse<UserProfileInfoDto>> GetProfileAsync(ClaimsPrincipal userPrincipal)
+
+    public async Task<BaseResponse<UserGetDto>> GetByIdAsync(Guid id)
     {
-        var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (userId == null)
-            return new("Unauthorized", null, HttpStatusCode.Unauthorized);
-
-        var user = await _userManager.FindByIdAsync(userId);
+        var user = await _userManager.FindByIdAsync(id.ToString());
         if (user == null)
-            return new("User not found", null, HttpStatusCode.NotFound);
+            return new BaseResponse<UserGetDto>("User not found", HttpStatusCode.NotFound);
 
-      
-        var roles = await _userManager.GetRolesAsync(user);
-        var profile = new UserProfileInfoDto
+        var dto = new UserGetDto
         {
             Id = user.Id,
-            Fullname = user.Fullname,
+            FullName = user.Fullname,
             Email = user.Email,
-            Roles = roles.ToList()
+      
         };
 
-        return new("User profile fetched successfully", profile, HttpStatusCode.OK);
+        return new BaseResponse<UserGetDto>("User Info:", dto, HttpStatusCode.OK);
     }
+
 
 
 

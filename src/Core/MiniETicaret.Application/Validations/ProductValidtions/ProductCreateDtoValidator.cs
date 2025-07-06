@@ -7,21 +7,13 @@ public class ProductCreateDtoValidator:AbstractValidator<ProductCreateDto>
 {
     public ProductCreateDtoValidator()
     {
-        RuleFor(p => p.Title)
-           .NotEmpty().WithMessage("Title can not be empty.")
-           .MinimumLength(3).WithMessage("Title must be at least 3 characters.");
-
-        RuleFor(p => p.Description)
-                .NotEmpty().WithMessage("Description can not be empty.")
-                .MinimumLength(5).WithMessage("Description must be at least 5 characters.");
-
-        RuleFor(p => p.Price)
-                .GreaterThan(0).WithMessage("Price must be greater than 0.");
-
-        RuleFor(p => p.CategoryId)
-                .NotEmpty().WithMessage("CategoryId is required.");
-
-        RuleFor(p => p.ImageUrl).NotEmpty().WithMessage("ImageUrl is required.");
+       RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.Title).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.Description).NotEmpty().MaximumLength(1000);
+        RuleFor(x => x.Price).GreaterThan(0);
+        RuleFor(x => x.Stock).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.CategoryId).NotEmpty();
+        RuleFor(x => x.ImageUrl).NotEmpty();
     }
 
 }

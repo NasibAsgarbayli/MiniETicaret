@@ -3,6 +3,7 @@ using System.Net;
 using MiniETicaret.Application.Shared.Settings;
 using Microsoft.Extensions.Options;
 using MiniETicaret.Application.Abstracts.Services;
+using MiniETicaret.Domain.Entities;
 
 
 namespace MiniETicaret.Infrastructure.Services;
@@ -40,4 +41,6 @@ public class EmailService:IEmailService
 
         await smtp.SendMailAsync(message);
     }
+
+
 }

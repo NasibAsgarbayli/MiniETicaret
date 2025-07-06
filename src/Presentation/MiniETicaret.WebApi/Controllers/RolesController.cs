@@ -45,8 +45,8 @@ namespace MiniETicaret.WebApi.Controllers
         }
 
 
-        [HttpGet]
-        [Authorize(Roles = "Admin")]
+        [HttpGet("Roles and Their Permissions")]
+        [Authorize(Roles = "Admin,Moderator")]
         public async Task<IActionResult> GetAllRoles()
         {
             var result = await _roleService.GetAllRolesWithPermissionsAsync();
@@ -55,7 +55,7 @@ namespace MiniETicaret.WebApi.Controllers
 
 
         [HttpDelete("{roleName}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,Moderator")]
         public async Task<IActionResult> DeleteRole(string roleName)
         {
             var result = await _roleService.DeleteRoleAsync(roleName);

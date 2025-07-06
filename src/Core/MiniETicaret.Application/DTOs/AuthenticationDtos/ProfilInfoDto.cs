@@ -1,6 +1,6 @@
-﻿namespace MiniETicaret.Application.DTOs.UserDtos;
+﻿namespace MiniETicaret.Application.DTOs.AuthenticationDtos;
 
-public class UserProfileInfoDto
+public class ProfilInfoDto
 {
     public string Id { get; set; } = null!;
     public string Fullname { get; set; } = null!;

@@ -5,8 +5,10 @@ namespace MiniETicaret.Application.Abstracts.Services;
 
 public interface ICategoryService
 {
-    Task<BaseResponse<string>> AddAsync(CategoryCreateDto dto, string userId);
+
     Task<BaseResponse<List<CategoryGetDto>>> GetAllAsync();
+    Task<BaseResponse<CategoryGetDto>> GetByIdAsync(Guid id);
+    Task<BaseResponse<string>> CreateAsync(CategoryCreateDto dto);
     Task<BaseResponse<string>> UpdateAsync(CategoryUpdateDto dto);
     Task<BaseResponse<string>> DeleteAsync(Guid id);
 

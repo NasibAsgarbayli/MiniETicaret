@@ -1,6 +1,6 @@
-﻿namespace MiniETicaret.Application.DTOs.UserDtos;
+﻿namespace MiniETicaret.Application.DTOs.AuthenticationDtos;
 
-public class UserLoginDto
+public class LoginDto
 {
     public string Email { get; set; } = null!;
     public string Password { get; set; } = null!;
