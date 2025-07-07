@@ -269,7 +269,7 @@ namespace MiniETicaret.Persistence.Migrations
 
                     b.HasIndex("ParentCategoryId");
 
-                    b.ToTable("Categories");
+                    b.ToTable("Categories", (string)null);
                 });
 
             modelBuilder.Entity("MiniETicaret.Domain.Entities.Favourite", b =>
@@ -306,7 +306,7 @@ namespace MiniETicaret.Persistence.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Favourites");
+                    b.ToTable("Favourites", (string)null);
                 });
 
             modelBuilder.Entity("MiniETicaret.Domain.Entities.Image", b =>
@@ -338,7 +338,7 @@ namespace MiniETicaret.Persistence.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("Images");
+                    b.ToTable("Images", (string)null);
                 });
 
             modelBuilder.Entity("MiniETicaret.Domain.Entities.Order", b =>
@@ -386,7 +386,7 @@ namespace MiniETicaret.Persistence.Migrations
 
                     b.HasIndex("AppUserId");
 
-                    b.ToTable("Orders");
+                    b.ToTable("Orders", (string)null);
                 });
 
             modelBuilder.Entity("MiniETicaret.Domain.Entities.OrderProduct", b =>
@@ -425,7 +425,7 @@ namespace MiniETicaret.Persistence.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("OrderProducts");
+                    b.ToTable("OrderProducts", (string)null);
                 });
 
             modelBuilder.Entity("MiniETicaret.Domain.Entities.Product", b =>
@@ -492,7 +492,7 @@ namespace MiniETicaret.Persistence.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Products");
+                    b.ToTable("Products", (string)null);
                 });
 
             modelBuilder.Entity("MiniETicaret.Domain.Entities.Review", b =>
@@ -540,7 +540,7 @@ namespace MiniETicaret.Persistence.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Reviews");
+                    b.ToTable("Reviews", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

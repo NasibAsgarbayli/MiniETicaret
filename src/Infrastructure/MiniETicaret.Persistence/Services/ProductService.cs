@@ -15,11 +15,13 @@ public class ProductService : IProductService
 {
     private readonly MiniETicaretDbContext _context;
     private readonly UserManager<AppUser> _userManager;
+    private readonly IFileService _fileService;
 
-    public ProductService(MiniETicaretDbContext context, UserManager<AppUser> userManager)
+    public ProductService(MiniETicaretDbContext context, UserManager<AppUser> userManager, IFileService fileService)
     {
         _context = context;
         _userManager = userManager;
+        _fileService = fileService;
     }
 
     public async Task<BaseResponse<Guid>> CreateAsync(ProductCreateDto dto, string sellerId)
@@ -28,6 +30,10 @@ public class ProductService : IProductService
         if (seller == null)
             return new BaseResponse<Guid>("Seller not found", Guid.Empty, HttpStatusCode.NotFound);
 
+        // Faylı yüklə
+        string? imageUrl = null;
+        if (dto.Image != null)
+            imageUrl = await _fileService.UploadAsync(dto.Image);
 
         var product = new Product
         {
@@ -38,7 +44,7 @@ public class ProductService : IProductService
             Stock = dto.Stock,
             Barcode = dto.Barcode,
             CategoryId = dto.CategoryId,
-            ImageUrl = dto.ImageUrl,
+            ImageUrl = imageUrl,
             UserId = sellerId,
             AppUser = seller,
             IsActive = true
@@ -49,7 +55,6 @@ public class ProductService : IProductService
 
         return new BaseResponse<Guid>("Product created", product.Id, HttpStatusCode.Created);
     }
-
     public async Task<BaseResponse<string>> UpdateAsync(ProductUpdateDto dto, string sellerId)
     {
         var product = await _context.Products.FindAsync(dto.Id);
@@ -160,9 +165,13 @@ public class ProductService : IProductService
         if (product.UserId != sellerId)
             return new BaseResponse<string>("You do not have permission to add image to this product", HttpStatusCode.Forbidden);
 
+        string imageUrl = null;
+        if (dto.Image != null)
+            imageUrl = await _fileService.UploadAsync(dto.Image);
+
         var image = new Image
         {
-            ImageUrl = dto.ImageUrl,
+            ImageUrl = imageUrl,
             ProductId = productId
         };
 
@@ -171,6 +180,7 @@ public class ProductService : IProductService
 
         return new BaseResponse<string>("Image added to product", HttpStatusCode.Created);
     }
+
 
     public async Task<BaseResponse<string>> DeleteImageAsync(Guid productId, Guid imageId, string sellerId)
     {

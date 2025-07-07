@@ -13,7 +13,7 @@ public class ProductCreateDtoValidator:AbstractValidator<ProductCreateDto>
         RuleFor(x => x.Price).GreaterThan(0);
         RuleFor(x => x.Stock).GreaterThanOrEqualTo(0);
         RuleFor(x => x.CategoryId).NotEmpty();
-        RuleFor(x => x.ImageUrl).NotEmpty();
+        RuleFor(x => x.Image).NotEmpty();
     }
 
 }

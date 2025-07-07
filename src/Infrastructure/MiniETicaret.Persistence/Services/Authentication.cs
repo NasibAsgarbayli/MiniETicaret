@@ -14,6 +14,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
 using System.Web;
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
+using MiniETicaret.Application.DTOs.ProductDtos;
+using MiniETicaret.Persistence.Contexts;
 
 namespace MiniETicaret.Persistence.Services;
 
@@ -24,8 +27,9 @@ public class Authentication : IAuthentication
     private readonly JwtSettings _jwtSetting;
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly IEmailService _mailService;
+    private readonly MiniETicaretDbContext _context;
 
-    public Authentication(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IOptions<JwtSettings> jwtSetting, RoleManager<IdentityRole> roleManager, IEmailService mailService)
+    public Authentication(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IOptions<JwtSettings> jwtSetting, RoleManager<IdentityRole> roleManager, IEmailService mailService,MiniETicaretDbContext context)
 
     {
         _userManager = userManager;
@@ -33,6 +37,7 @@ public class Authentication : IAuthentication
         _jwtSetting = jwtSetting.Value;   
         _roleManager = roleManager;
         _mailService = mailService;
+        _context = context;
     }
 
     public async Task<BaseResponse<ProfilInfoDto>> GetProfileAsync(ClaimsPrincipal userPrincipal)
@@ -45,18 +50,39 @@ public class Authentication : IAuthentication
         if (user == null)
             return new("User not found", null, HttpStatusCode.NotFound);
 
-
         var roles = await _userManager.GetRolesAsync(user);
+
+        List<ProductInfoDto>? products = null;
+        if (roles.Contains("Seller"))
+        {
+            products = await _context.Products
+                .Where(p => p.UserId == user.Id)
+                .Include(p => p.Category)
+                .Select(p => new ProductInfoDto
+                {
+                    Id = p.Id,
+                    Title = p.Title,
+                    Price = p.Price,
+                    name=p.Name,
+                    Description=p.Description,
+                    CategoryId = p.CategoryId,
+                    CategoryName = p.Category != null ? p.Category.Name : null
+                })
+                .ToListAsync();
+        }
+
         var profile = new ProfilInfoDto
         {
             Id = user.Id,
             Fullname = user.Fullname,
             Email = user.Email,
-            Roles = roles.ToList()
+            Roles = roles.ToList(),
+            Products = products // seller deyilsə, null qalacaq
         };
 
         return new("User profile fetched successfully", profile, HttpStatusCode.OK);
     }
+
 
     public async Task<BaseResponse<TokenResponse>> Login(LoginDto dto)
     {

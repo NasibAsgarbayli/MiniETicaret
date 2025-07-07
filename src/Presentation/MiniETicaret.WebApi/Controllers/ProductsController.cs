@@ -50,7 +50,7 @@ namespace MiniETicaret.WebApi.Controllers
         [HttpPost]
         [Authorize(Policy = Permissions.Product.Create)]
         [ProducesResponseType(typeof(BaseResponse<Guid>), (int)HttpStatusCode.Created)]
-        public async Task<IActionResult> Create([FromBody] ProductCreateDto dto)
+        public async Task<IActionResult> Create([FromForm] ProductCreateDto dto)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var result = await _service.CreateAsync(dto, userId);
@@ -88,16 +88,16 @@ namespace MiniETicaret.WebApi.Controllers
             return StatusCode((int)result.StatusCode, result);
         }
 
-        [HttpPost("{productId}/images")]
+        [HttpPost("{productId}/AddImages")]
         [Authorize(Policy = Permissions.Product.AddProductImage)]
-        public async Task<IActionResult> AddImage(Guid productId, [FromBody] ImageAddDto dto)
+        public async Task<IActionResult> AddImage(Guid productId, [FromForm] ImageAddDto dto)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var result = await _service.AddImageAsync(productId, dto, userId);
             return StatusCode((int)result.StatusCode, result);
         }
 
-        [HttpDelete("{productId}/images/{imageId}")]
+        [HttpDelete("{productId}/DeleteImages/{imageId}")]
         [Authorize(Policy = Permissions.Product.DeleteProductImage)]
         public async Task<IActionResult> DeleteImage(Guid productId, Guid imageId)
         {

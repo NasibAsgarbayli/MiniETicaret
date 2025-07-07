@@ -1,6 +1,9 @@
-﻿namespace MiniETicaret.Application.DTOs.ImageDtos;
+﻿using Microsoft.AspNetCore.Http;
+
+namespace MiniETicaret.Application.DTOs.ImageDtos;
 
 public class ImageAddDto
 {
-    public string ImageUrl { get; set; }
+    public IFormFile Image { get; set; }
+
 }

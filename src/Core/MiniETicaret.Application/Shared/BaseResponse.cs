@@ -19,7 +19,7 @@ public class BaseResponse<T>
     {
         Message = message;
         Success = false;
-        StatusCode = statusCode;
+        Success = ((int)statusCode >= 200 && (int)statusCode < 300);
     }
 
     public BaseResponse(string message, bool isSuccess, HttpStatusCode statusCode)
