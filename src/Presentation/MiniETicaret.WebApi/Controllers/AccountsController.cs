@@ -22,6 +22,7 @@ namespace MiniETicaret.WebApi.Controllers
 
 
         [HttpPost("assign-roles")]
+        [Authorize(Policy =Permissions.Account.AddRole)]
         [ProducesResponseType(typeof(BaseResponse<TokenResponse>), (int)HttpStatusCode.OK)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.NotFound)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.InternalServerError)]
@@ -34,7 +35,7 @@ namespace MiniETicaret.WebApi.Controllers
 
 
         [HttpGet]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy =Permissions.User.GetAll)]
         [ProducesResponseType(typeof(BaseResponse<List<UserGetDto>>), (int)HttpStatusCode.OK)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.InternalServerError)]
         public async Task<IActionResult> GetAll()
@@ -45,7 +46,7 @@ namespace MiniETicaret.WebApi.Controllers
 
 
         [HttpGet("{id}")]
-        [Authorize(Roles = "Admin,Moderator")]
+        [Authorize(Policy =Permissions.User.GetById)]
         [ProducesResponseType(typeof(BaseResponse<UserGetDto>), (int)HttpStatusCode.OK)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.NotFound)]
         public async Task<IActionResult> GetById(Guid id)

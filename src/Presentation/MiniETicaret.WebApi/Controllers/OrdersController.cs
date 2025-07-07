@@ -17,7 +17,7 @@ namespace MiniETicaret.WebApi.Controllers
         public OrdersController(IOrderService service) { _service = service; }
 
         [HttpPost]
-        [Authorize(Roles = "Buyer,Admin,Moderator")]
+        [Authorize(Policy = Permissions.Order.Create)]
         [ProducesResponseType(typeof(BaseResponse<Guid>), (int)HttpStatusCode.Created)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.BadRequest)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.NotFound)]
@@ -31,7 +31,7 @@ namespace MiniETicaret.WebApi.Controllers
         }
 
         [HttpGet("my")]
-        [Authorize(Roles = "Buyer,Admin,Moderator")]
+        [Authorize(Policy = Permissions.Order.GetMy)]
         [ProducesResponseType(typeof(BaseResponse<List<OrderGetDto>>), (int)HttpStatusCode.OK)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.NotFound)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.InternalServerError)]
@@ -44,7 +44,7 @@ namespace MiniETicaret.WebApi.Controllers
         }
 
         [HttpGet("my-sales")]
-        [Authorize(Roles = "Seller,Admin,Moderator")]
+        [Authorize(Policy = Permissions.Order.GetMySales)]
         [ProducesResponseType(typeof(BaseResponse<List<OrderGetDto>>), (int)HttpStatusCode.OK)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.NotFound)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.InternalServerError)]
@@ -99,7 +99,7 @@ namespace MiniETicaret.WebApi.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Admin,Moderator")]
+        [Authorize(Policy = Permissions.Order.GetAll)]
         [ProducesResponseType(typeof(BaseResponse<List<OrderGetDto>>), (int)HttpStatusCode.OK)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.Forbidden)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.InternalServerError)]

@@ -39,7 +39,7 @@ namespace MiniETicaret.WebApi.Controllers
 
         // POST /api/categories
         [HttpPost]
-        [Authorize(Roles = "Admin,Moderator")]
+        [Authorize(Policy =Permissions.Category.MainCreate)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.Created)]
         public async Task<IActionResult> Create([FromBody] CategoryCreateDto dto)
         {
@@ -49,7 +49,7 @@ namespace MiniETicaret.WebApi.Controllers
 
         // PUT /api/categories
         [HttpPut]
-        [Authorize(Roles = "Admin,Moderator")]
+        [Authorize(Policy =Permissions.Category.Update)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> Update([FromBody] CategoryUpdateDto dto)
         {
@@ -59,7 +59,7 @@ namespace MiniETicaret.WebApi.Controllers
 
         // DELETE /api/categories/{id}
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,Moderator")]
+        [Authorize(Policy = Permissions.Category.Delete)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> Delete(Guid id)
         {

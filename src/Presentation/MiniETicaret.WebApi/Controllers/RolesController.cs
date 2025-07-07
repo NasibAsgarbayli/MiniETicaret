@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MiniETicaret.Application.Abstracts.Services;
 using MiniETicaret.Application.DTOs.RoleDtos;
+using MiniETicaret.Application.Shared;
 using MiniETicaret.Application.Shared.Helpers;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -22,12 +23,14 @@ namespace MiniETicaret.WebApi.Controllers
 
         // GET: api/<RolesController>
         [HttpGet("permissions")]
+        [Authorize(Policy = Permissions.Role.GetAllPermissions)]
         public IActionResult GetAllPermissions()
         {
             var permissions = PermissionHelper.GetAllPermissions();
             return Ok(permissions);
         }
         [HttpPost("CreateRole")]
+        [Authorize(Policy = Permissions.Role.Create)]
         public async Task<IActionResult> Create(RoleCreateDto dto)
         {
             var result = await _roleService.CreateRole(dto);
@@ -35,6 +38,7 @@ namespace MiniETicaret.WebApi.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Policy = Permissions.Role.Update)]
         public async Task<IActionResult> Update(string id, [FromBody] RoleUpdateDto dto)
         {
             if (id != dto.Id)
@@ -46,7 +50,7 @@ namespace MiniETicaret.WebApi.Controllers
 
 
         [HttpGet("Roles and Their Permissions")]
-        [Authorize(Roles = "Admin,Moderator")]
+        [Authorize(Policy = Permissions.Role.GetAllPermissions)]
         public async Task<IActionResult> GetAllRoles()
         {
             var result = await _roleService.GetAllRolesWithPermissionsAsync();
@@ -55,7 +59,7 @@ namespace MiniETicaret.WebApi.Controllers
 
 
         [HttpDelete("{roleName}")]
-        [Authorize(Roles = "Admin,Moderator")]
+        [Authorize(Policy = Permissions.Role.Delete)]
         public async Task<IActionResult> DeleteRole(string roleName)
         {
             var result = await _roleService.DeleteRoleAsync(roleName);

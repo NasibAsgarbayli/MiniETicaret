@@ -33,7 +33,7 @@ namespace MiniETicaret.WebApi.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,Moderator")]
+        [Authorize(Policy = Permissions.Review.Delete)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.OK)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.BadRequest)]
         public async Task<IActionResult> Delete(Guid id)

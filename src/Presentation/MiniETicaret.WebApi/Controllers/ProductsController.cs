@@ -48,7 +48,7 @@ namespace MiniETicaret.WebApi.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Seller,Admin,Moderator")]
+        [Authorize(Policy = Permissions.Product.Create)]
         [ProducesResponseType(typeof(BaseResponse<Guid>), (int)HttpStatusCode.Created)]
         public async Task<IActionResult> Create([FromBody] ProductCreateDto dto)
         {
@@ -58,7 +58,7 @@ namespace MiniETicaret.WebApi.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Seller,Admin,Moderator")]
+        [Authorize(Policy = Permissions.Product.Update)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> Update(Guid id, [FromBody] ProductUpdateDto dto)
         {
@@ -69,7 +69,7 @@ namespace MiniETicaret.WebApi.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Seller,Admin,Moderator")]
+        [Authorize(Policy = Permissions.Product.Delete)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> Delete(Guid id)
         {
@@ -79,7 +79,7 @@ namespace MiniETicaret.WebApi.Controllers
         }
 
         [HttpGet("my")]
-        [Authorize(Roles = "Seller,Admin,Moderator")]
+        [Authorize(Policy = Permissions.Product.GetMy)]
         [ProducesResponseType(typeof(BaseResponse<List<ProductGetDto>>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> GetMy()
         {
@@ -89,7 +89,7 @@ namespace MiniETicaret.WebApi.Controllers
         }
 
         [HttpPost("{productId}/images")]
-        [Authorize(Roles = "Seller,Admin,Moderator")]
+        [Authorize(Policy = Permissions.Product.AddProductImage)]
         public async Task<IActionResult> AddImage(Guid productId, [FromBody] ImageAddDto dto)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -98,7 +98,7 @@ namespace MiniETicaret.WebApi.Controllers
         }
 
         [HttpDelete("{productId}/images/{imageId}")]
-        [Authorize(Roles = "Seller,Admin,Moderator")]
+        [Authorize(Policy = Permissions.Product.DeleteProductImage)]
         public async Task<IActionResult> DeleteImage(Guid productId, Guid imageId)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
