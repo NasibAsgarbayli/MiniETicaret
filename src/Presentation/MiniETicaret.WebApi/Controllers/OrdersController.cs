@@ -30,7 +30,7 @@ namespace MiniETicaret.WebApi.Controllers
             return StatusCode((int)result.StatusCode, result);
         }
 
-        [HttpGet("my")]
+        [HttpGet("GeMyOrders")]
         [Authorize(Policy = Permissions.Order.GetMy)]
         [ProducesResponseType(typeof(BaseResponse<List<OrderGetDto>>), (int)HttpStatusCode.OK)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.NotFound)]
@@ -98,7 +98,7 @@ namespace MiniETicaret.WebApi.Controllers
             return StatusCode((int)result.StatusCode, result);
         }
 
-        [HttpGet]
+        [HttpGet("GetAllOrders")]
         [Authorize(Policy = Permissions.Order.GetAll)]
         [ProducesResponseType(typeof(BaseResponse<List<OrderGetDto>>), (int)HttpStatusCode.OK)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.Forbidden)]
