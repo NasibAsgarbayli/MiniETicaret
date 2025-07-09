@@ -89,6 +89,7 @@ public class ProductService : IProductService
             return new BaseResponse<string>("You do not have permission to delete this product", HttpStatusCode.Forbidden);
 
         product.IsDeleted = true;
+        product.IsActive = false;
         _context.Products.Update(product);
         await _context.SaveChangesAsync();
 
@@ -201,6 +202,7 @@ public class ProductService : IProductService
             return new BaseResponse<string>("Image not found", HttpStatusCode.NotFound);
 
         image.IsDeleted = true;
+
         product.Images.Remove(image);
         await _context.SaveChangesAsync();
 
