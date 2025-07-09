@@ -7,6 +7,7 @@ using MiniETicaret.Application.Shared;
 using MiniETicaret.Application.Abstracts.Services;
 using MiniETicaret.Persistence.Services;
 using MiniETicaret.Application.DTOs.AuthenticationDtos;
+using System.Web;
 
 namespace MiniETicaret.WebApi.Controllers
 {
@@ -70,7 +71,7 @@ namespace MiniETicaret.WebApi.Controllers
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.InternalServerError)]
         public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string token)
         {
-
+            
             var result = await _authentication.ConfirmEmail(userId, token);
             return StatusCode((int)result.StatusCode, result);
 

@@ -152,6 +152,8 @@ public class Authentication : IAuthentication
         {
             return new("Email confirmation failed", HttpStatusCode.NotFound);
         }
+
+        token = HttpUtility.UrlDecode(token);
         var result = await _userManager.ConfirmEmailAsync(existedUser, token);
         if (!result.Succeeded)
         {
