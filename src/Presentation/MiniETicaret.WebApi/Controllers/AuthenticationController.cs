@@ -97,7 +97,7 @@ namespace MiniETicaret.WebApi.Controllers
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.InternalServerError)]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
         {
-            var result = await _authentication.ResetPassword(dto);
+            var result = await _authentication.ResetPasswordAsync(dto);
             return StatusCode((int)result.StatusCode, result);
 
         }

@@ -21,7 +21,9 @@ using MiniETicaret.Persistence.Contexts;
 namespace MiniETicaret.Persistence.Services;
 
 public class Authentication : IAuthentication
+
 {
+
     private UserManager<AppUser> _userManager { get; }
     private readonly SignInManager<AppUser> _signInManager;
     private readonly JwtSettings _jwtSetting;
@@ -290,21 +292,16 @@ public class Authentication : IAuthentication
     }
 
 
-
-    public async Task<BaseResponse<string>> ResetPassword(ResetPasswordDto dto)
+    public async Task<BaseResponse<string>> ResetPasswordAsync(ResetPasswordDto dto)
     {
         var user = await _userManager.FindByEmailAsync(dto.Email);
         if (user is null)
-        {
             return new("User not found", false, HttpStatusCode.NotFound);
-        }
 
         if (!user.EmailConfirmed)
-        {
             return new("Please confirm your email", false, HttpStatusCode.BadRequest);
-        }
 
-        // Tokeni burada decode edirik
+        // Tokeni decode et, çünki linkdə URL-encoded olur
         var decodedToken = HttpUtility.UrlDecode(dto.Token);
 
         var result = await _userManager.ResetPasswordAsync(user, decodedToken, dto.NewPassword);
@@ -314,9 +311,11 @@ public class Authentication : IAuthentication
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
             return new($"Failed to reset password: {errors}", false, HttpStatusCode.BadRequest);
         }
-        user.EmailConfirmed = true;
+
         return new("Password reset successfully", true, HttpStatusCode.OK);
     }
+
+
     public async Task<BaseResponse<string>> SendResetPasswordEmail(string email)
     {
         var user = await _userManager.FindByEmailAsync(email);

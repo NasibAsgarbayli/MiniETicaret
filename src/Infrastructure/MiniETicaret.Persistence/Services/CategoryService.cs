@@ -19,8 +19,8 @@ public class CategoryService : ICategoryService
     public async Task<BaseResponse<List<CategoryGetDto>>> GetAllAsync()
     {
         var categories = await _context.Categories
-            .Where(c => c.ParentCategoryId == null)
-            .Include(c => c.SubCategories)
+            .Where(c => c.ParentCategoryId == null && !c.IsDeleted)
+            .Include(c => c.SubCategories.Where(sc => !sc.IsDeleted))
             .ToListAsync();
 
         var result = categories.Select(MapCategoryToDto).ToList();
@@ -30,8 +30,8 @@ public class CategoryService : ICategoryService
     public async Task<BaseResponse<CategoryGetDto>> GetByIdAsync(Guid id)
     {
         var category = await _context.Categories
-            .Include(c => c.SubCategories)
-            .FirstOrDefaultAsync(c => c.Id == id);
+            .Include(c => c.SubCategories.Where(sc => !sc.IsDeleted))
+            .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted);
 
         if (category == null)
             return new BaseResponse<CategoryGetDto>("Category not found", HttpStatusCode.NotFound);
@@ -83,7 +83,9 @@ public class CategoryService : ICategoryService
         if (category == null)
             return new BaseResponse<string>("Category not found", HttpStatusCode.NotFound);
 
-        _context.Categories.Remove(category);
+        
+        category.IsDeleted = true;
+        _context.Categories.Update(category);
         await _context.SaveChangesAsync();
 
         return new BaseResponse<string>("Category deleted", HttpStatusCode.OK);

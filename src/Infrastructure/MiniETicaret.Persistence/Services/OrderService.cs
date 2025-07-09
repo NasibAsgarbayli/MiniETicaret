@@ -24,7 +24,7 @@ public class OrderService : IOrderService
     {
         _context = context;
         _userManager = userManager;
-        _emailService = emailService;   
+        _emailService = emailService;
         _logger = logger;
     }
     public async Task<BaseResponse<Guid>> CreateAsync(OrderCreateDto dto, string buyerId)
@@ -144,7 +144,7 @@ public class OrderService : IOrderService
     {
         var orders = await _context.Orders
             .Include(o => o.OrderProducts).ThenInclude(op => op.Product)
-            .Where(o => o.AppUsers.Any(u => u.Id == buyerId))
+            .Where(o => o.AppUsers.Any(u => u.Id == buyerId) && !o.IsDeleted)
             .OrderByDescending(o => o.OrderDate)
             .ToListAsync();
 
@@ -156,7 +156,7 @@ public class OrderService : IOrderService
     {
         var orders = await _context.Orders
             .Include(o => o.OrderProducts).ThenInclude(op => op.Product)
-            .Where(o => o.OrderProducts.Any(op => op.Product.UserId == sellerId))
+            .Where(o => o.OrderProducts.Any(op => op.Product.UserId == sellerId) && !o.IsDeleted)
             .OrderByDescending(o => o.OrderDate)
             .ToListAsync();
 
@@ -169,7 +169,7 @@ public class OrderService : IOrderService
         var order = await _context.Orders
             .Include(o => o.OrderProducts).ThenInclude(op => op.Product)
             .Include(o => o.AppUsers)
-            .FirstOrDefaultAsync(o => o.Id == id);
+            .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
 
         if (order == null)
             return new BaseResponse<OrderGetDto>("Order not found", null, HttpStatusCode.NotFound);
@@ -189,7 +189,7 @@ public class OrderService : IOrderService
         var order = await _context.Orders
             .Include(o => o.AppUsers)
             .Include(o => o.OrderProducts).ThenInclude(op => op.Product)
-            .FirstOrDefaultAsync(o => o.Id == id);
+            .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
 
         if (order == null)
             return new BaseResponse<string>("Order not found", HttpStatusCode.NotFound);
@@ -205,12 +205,11 @@ public class OrderService : IOrderService
 
         return new BaseResponse<string>("Order status updated", HttpStatusCode.OK);
     }
-
     public async Task<BaseResponse<string>> DeleteAsync(Guid id, string userId, string role)
     {
         var order = await _context.Orders
             .Include(o => o.AppUsers)
-            .FirstOrDefaultAsync(o => o.Id == id);
+            .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
 
         if (order == null)
             return new BaseResponse<string>("Order not found", HttpStatusCode.NotFound);
@@ -220,12 +219,12 @@ public class OrderService : IOrderService
         if (!(isOwner || role == "Admin"))
             return new BaseResponse<string>("You do not have permission to delete this order", HttpStatusCode.Forbidden);
 
-        _context.Orders.Remove(order);
+        order.IsDeleted = true;
+        _context.Orders.Update(order);
         await _context.SaveChangesAsync();
 
         return new BaseResponse<string>("Order deleted", HttpStatusCode.OK);
     }
-
     public async Task<BaseResponse<List<OrderGetDto>>> GetAllAsync(string role)
     {
         if (role != "Admin")
@@ -233,6 +232,7 @@ public class OrderService : IOrderService
 
         var orders = await _context.Orders
             .Include(o => o.OrderProducts).ThenInclude(op => op.Product)
+             .Where(o => !o.IsDeleted)
             .OrderByDescending(o => o.OrderDate)
             .ToListAsync();
 
@@ -258,7 +258,7 @@ public class OrderService : IOrderService
                 ProductName = op.Product?.Name,
                 ProductCount = op.ProductCount,
                 ProductPrice = op.ProductPrice
-                
+
             }).ToList()
         };
     }

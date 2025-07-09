@@ -19,9 +19,21 @@ public class FavouriteService : IFavouriteService
 
     public async Task<BaseResponse<string>> AddAsync(FavouriteAddDto dto, string userId)
     {
-        var alreadyExists = await _context.Favourites.AnyAsync(f => f.UserId == userId && f.ProductId == dto.ProductId);
-        if (alreadyExists)
-            return new BaseResponse<string>("Product already in favourites", HttpStatusCode.BadRequest);
+        var existing = await _context.Favourites
+            .FirstOrDefaultAsync(f => f.UserId == userId && f.ProductId == dto.ProductId);
+
+        if (existing != null)
+        {
+            if (!existing.IsDeleted)
+                return new BaseResponse<string>("Product already in favourites", HttpStatusCode.BadRequest);
+
+            // Soft deleted idi, indi bərpa et
+            existing.IsDeleted = false;
+            existing.AddedAt = DateTime.UtcNow;
+            _context.Favourites.Update(existing);
+            await _context.SaveChangesAsync();
+            return new BaseResponse<string>("Product re-added to favourites", HttpStatusCode.Created);
+        }
 
         var favourite = new Favourite
         {
@@ -39,7 +51,7 @@ public class FavouriteService : IFavouriteService
     {
         var favourites = await _context.Favourites
             .Include(f => f.Product)
-            .Where(f => f.UserId == userId)
+            .Where(f => f.UserId == userId && !f.IsDeleted)
             .OrderByDescending(f => f.AddedAt)
             .ToListAsync();
 
@@ -53,16 +65,16 @@ public class FavouriteService : IFavouriteService
 
         return new BaseResponse<List<FavouriteGetDto>>("Favourites retrieved successfully", result, HttpStatusCode.OK);
     }
-
     public async Task<BaseResponse<string>> RemoveAsync(Guid productId, string userId)
     {
         var favourite = await _context.Favourites
-          .FirstOrDefaultAsync(f => f.ProductId == productId && f.UserId == userId);
+          .FirstOrDefaultAsync(f => f.ProductId == productId && f.UserId == userId && !f.IsDeleted);
 
         if (favourite == null)
             return new BaseResponse<string>("Favourite not found", HttpStatusCode.NotFound);
 
-        _context.Favourites.Remove(favourite);
+        favourite.IsDeleted = true;
+        _context.Favourites.Update(favourite);
         await _context.SaveChangesAsync();
         return new BaseResponse<string>("Product removed from favourites", HttpStatusCode.OK);
     }

@@ -18,6 +18,6 @@ public interface IAuthentication
 
     Task<BaseResponse<string>> SendResetPasswordEmail(string email);
 
-    Task<BaseResponse<string>> ResetPassword(ResetPasswordDto dto);
+    Task<BaseResponse<string>> ResetPasswordAsync(ResetPasswordDto dto);
 
 }
