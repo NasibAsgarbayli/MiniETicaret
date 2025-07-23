@@ -12,5 +12,6 @@ public interface IJobService
 {
     Task<BaseResponse<string>> FreezeInactiveUsersAsync();
     Task<BaseResponse<string>> FreezeIfInactive(AppUser user);
+    Task<BaseResponse<string>> SendEmailAsync(List<string> emails, string subject, string body);
 
 }

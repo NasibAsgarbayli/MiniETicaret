@@ -10,6 +10,7 @@ using MiniETicaret.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Text;
+using Hangfire;
 
 namespace MiniETicaret.Persistence.Services;
 
@@ -19,13 +20,15 @@ public class OrderService : IOrderService
     private readonly UserManager<AppUser> _userManager;
     private readonly IEmailService _emailService;
     private readonly ILogger<OrderService> _logger;
+    private readonly IJobService _jobService;
 
-    public OrderService(MiniETicaretDbContext context, UserManager<AppUser> userManager, IEmailService emailService, ILogger<OrderService> logger)
+    public OrderService(MiniETicaretDbContext context, UserManager<AppUser> userManager, IEmailService emailService, ILogger<OrderService> logger, IJobService jobService)
     {
         _context = context;
         _userManager = userManager;
         _emailService = emailService;
         _logger = logger;
+        _jobService = jobService;
     }
     public async Task<BaseResponse<Guid>> CreateAsync(OrderCreateDto dto, string buyerId)
     {
@@ -75,15 +78,18 @@ public class OrderService : IOrderService
 
         try
         {
-            // 1. Buyer-ə email
+            // 1. Buyer-ə email (background-da!)
             string subject = "Sifarişiniz qəbul olundu!";
             string body = $"Sifariş nömrəsi: {order.Id}<br>Ümumi məbləğ: {order.TotalPrice} AZN";
-            await _emailService.SendEmailAsync(
-                new[] { buyer.Email }, subject, body
+            BackgroundJob.Enqueue<IJobService>(job =>
+                job.SendEmailAsync(
+                    new List<string> { buyer.Email },
+                    subject,
+                    body
+                )
             );
 
-            // 2. Seller-lərə email (hər seller üçün öz məhsullarının siyahısı ilə)
-            // SellerId-ləri uniq topla
+            // 2. Seller-lərə email (background-da!)
             var sellerIds = orderProducts
                 .Select(op =>
                     _context.Products
@@ -98,7 +104,6 @@ public class OrderService : IOrderService
                 var seller = await _userManager.FindByIdAsync(sellerId);
                 if (seller != null && !string.IsNullOrEmpty(seller.Email))
                 {
-                    // Sellerə aid bu orderdəki məhsulları tap
                     var sellerProducts = orderProducts
                         .Where(op =>
                             _context.Products
@@ -123,10 +128,12 @@ public class OrderService : IOrderService
                     }
                     sb.AppendLine($"<br>Ümumi məbləğ: {sellerTotal} AZN");
 
-                    await _emailService.SendEmailAsync(
-                        new[] { seller.Email },
-                        "Məhsulunuza sifariş gəldi!",
-                        sb.ToString()
+                    BackgroundJob.Enqueue<IJobService>(job =>
+                        job.SendEmailAsync(
+                            new List<string> { seller.Email },
+                            "Məhsulunuza sifariş gəldi!",
+                            sb.ToString()
+                        )
                     );
                 }
             }

@@ -17,6 +17,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using MiniETicaret.Application.DTOs.ProductDtos;
 using MiniETicaret.Persistence.Contexts;
+using Hangfire;
 
 namespace MiniETicaret.Persistence.Services;
 
@@ -30,16 +31,18 @@ public class Authentication : IAuthentication
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly IEmailService _mailService;
     private readonly MiniETicaretDbContext _context;
+    private readonly IJobService _jobService;
 
-    public Authentication(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IOptions<JwtSettings> jwtSetting, RoleManager<IdentityRole> roleManager, IEmailService mailService,MiniETicaretDbContext context)
+    public Authentication(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IOptions<JwtSettings> jwtSetting, RoleManager<IdentityRole> roleManager, IEmailService mailService, MiniETicaretDbContext context, IJobService jobService)
 
     {
         _userManager = userManager;
         _signInManager = signInManager;
-        _jwtSetting = jwtSetting.Value;   
+        _jwtSetting = jwtSetting.Value;
         _roleManager = roleManager;
         _mailService = mailService;
         _context = context;
+        _jobService = jobService;
     }
 
     public async Task<BaseResponse<ProfilInfoDto>> GetProfileAsync(ClaimsPrincipal userPrincipal)
@@ -65,8 +68,8 @@ public class Authentication : IAuthentication
                     Id = p.Id,
                     Title = p.Title,
                     Price = p.Price,
-                    name=p.Name,
-                    Description=p.Description,
+                    name = p.Name,
+                    Description = p.Description,
                     CategoryId = p.CategoryId,
                     CategoryName = p.Category != null ? p.Category.Name : null
                 })
@@ -139,8 +142,18 @@ public class Authentication : IAuthentication
         var roleName = dto.Role.ToString();
         await _userManager.AddToRoleAsync(newUser, roleName);
         string confirmEmailLink = await GetEmailConfirmLink(newUser);
-        await _mailService.SendEmailAsync(new List<string> { newUser.Email }, "Email Confirmation",
-            confirmEmailLink);
+
+        BackgroundJob.Enqueue<IJobService>(job =>
+                job.SendEmailAsync(
+         new List<string> { newUser.Email },
+         "Email Confirmation",
+         confirmEmailLink
+                )
+        );
+
+
+
+
 
         return new("Succesfuly Created", HttpStatusCode.Created);
     }
@@ -329,8 +342,17 @@ public class Authentication : IAuthentication
         // Token və link yaratmaq üçün hazır metoddan istifadə
         var resetLink = await GetEmailResetConfirm(user);
 
-        // İstifadəçiyə reset linkini email kimi göndər
-        await _mailService.SendEmailAsync(new List<string> { user.Email }, "Reset Password", resetLink);
+
+        BackgroundJob.Enqueue<IJobService>(job =>
+                    job.SendEmailAsync(
+           new List<string> { user.Email },
+           "Reset Password",
+           resetLink
+                    )
+         );
+
+
+
 
         return new BaseResponse<string>("Email confirmed successfully", true, HttpStatusCode.OK);
     }

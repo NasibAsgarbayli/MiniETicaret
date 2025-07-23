@@ -3,16 +3,22 @@ using Microsoft.AspNetCore.Identity;
 using MiniETicaret.Application.Abstracts.Services;
 using MiniETicaret.Application.Shared;
 using MiniETicaret.Domain.Entities;
+using MiniETicaret.Infrastructure.Services;
 
 namespace MiniETicaret.Persistence.Services;
 
 public class JobService : IJobService
 {
     private readonly UserManager<AppUser> _userManager;
+    private readonly IEmailService _emailService;
 
-    public JobService(UserManager<AppUser> userManager)
+
+    public JobService(UserManager<AppUser> userManager, IEmailService emailService)
     {
         _userManager = userManager;
+        _emailService = emailService;
+
+
     }
     public async Task<BaseResponse<string>> FreezeIfInactive(AppUser user)
     {
@@ -48,6 +54,13 @@ public class JobService : IJobService
             return new BaseResponse<string>("No inactive users found.", null,HttpStatusCode.NotFound);
 
         return new BaseResponse<string>($"{frozenCount} inactive users frozen.", null, HttpStatusCode.OK);
+    }
+
+
+    public async Task<BaseResponse<string>> SendEmailAsync(List<string> emails, string subject, string body)
+    {
+        await _emailService.SendEmailAsync(emails, subject, body);
+        return new BaseResponse<string>("Email sent as background job.", null, HttpStatusCode.OK);
     }
 
 }
