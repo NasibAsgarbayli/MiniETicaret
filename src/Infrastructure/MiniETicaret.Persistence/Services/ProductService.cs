@@ -58,7 +58,7 @@ public class ProductService : IProductService
     public async Task<BaseResponse<string>> UpdateAsync(ProductUpdateDto dto, string sellerId)
     {
         var product = await _context.Products.FindAsync(dto.Id);
-        if (product == null)
+        if (product == null||product.IsDeleted)
             return new BaseResponse<string>("Product not found", HttpStatusCode.NotFound);
 
         if (product.UserId != sellerId)
@@ -82,13 +82,15 @@ public class ProductService : IProductService
     public async Task<BaseResponse<string>> DeleteAsync(Guid id, string sellerId)
     {
         var product = await _context.Products.FindAsync(id);
-        if (product == null)
+        if (product == null || product.IsDeleted)
             return new BaseResponse<string>("Product not found", HttpStatusCode.NotFound);
 
         if (product.UserId != sellerId)
             return new BaseResponse<string>("You do not have permission to delete this product", HttpStatusCode.Forbidden);
 
-        _context.Products.Remove(product);
+        product.IsDeleted = true;
+        product.IsActive = false;
+        _context.Products.Update(product);
         await _context.SaveChangesAsync();
 
         return new BaseResponse<string>("Product deleted", HttpStatusCode.OK);
@@ -100,7 +102,7 @@ public class ProductService : IProductService
             .Include(p => p.AppUser)
             .Include(p => p.Category)
             .Include(p => p.Images)
-            .FirstOrDefaultAsync(p => p.Id == id);
+            .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
 
         if (product == null)
             return new BaseResponse<ProductGetDto>("Product not found", null, HttpStatusCode.NotFound);
@@ -115,6 +117,7 @@ public class ProductService : IProductService
             .Include(p => p.AppUser)
             .Include(p => p.Category)
             .Include(p => p.Images)
+            .Where(p=> !p.IsDeleted)
             .AsQueryable();
 
         if (filter != null)
@@ -145,7 +148,7 @@ public class ProductService : IProductService
         var products = await _context.Products
             .Include(p => p.Category)
             .Include(p => p.Images)
-            .Where(p => p.UserId == sellerId)
+            .Where(p => p.UserId == sellerId && !p.IsDeleted)
             .OrderByDescending(p => p.Id)
             .ToListAsync();
 
@@ -157,7 +160,7 @@ public class ProductService : IProductService
     {
         var product = await _context.Products
             .Include(p => p.Images)
-            .FirstOrDefaultAsync(p => p.Id == productId);
+            .FirstOrDefaultAsync(p => p.Id == productId && !p.IsDeleted);
 
         if (product == null)
             return new BaseResponse<string>("Product not found", HttpStatusCode.NotFound);
@@ -186,7 +189,7 @@ public class ProductService : IProductService
     {
         var product = await _context.Products
             .Include(p => p.Images)
-            .FirstOrDefaultAsync(p => p.Id == productId);
+            .FirstOrDefaultAsync(p => p.Id == productId && !p.IsDeleted);
 
         if (product == null)
             return new BaseResponse<string>("Product not found", HttpStatusCode.NotFound);
@@ -194,9 +197,11 @@ public class ProductService : IProductService
         if (product.UserId != sellerId)
             return new BaseResponse<string>("You do not have permission to delete image from this product", HttpStatusCode.Forbidden);
 
-        var image = product.Images.FirstOrDefault(i => i.Id == imageId);
+        var image = product.Images.FirstOrDefault(i => i.Id == imageId && !i.IsDeleted);
         if (image == null)
             return new BaseResponse<string>("Image not found", HttpStatusCode.NotFound);
+
+        image.IsDeleted = true;
 
         product.Images.Remove(image);
         await _context.SaveChangesAsync();
@@ -222,7 +227,9 @@ public class ProductService : IProductService
             CategoryName = product.Category?.Name,
             AverageRating = product.AverageRating,
             IsActive = product.IsActive,
-            Images = product.Images?.Select(i => new ImageGetDto
+            Images = product.Images?
+            .Where(i=> !i.IsDeleted)
+            .Select(i => new ImageGetDto
             {
                 Id = i.Id,
                 ImageUrl = i.ImageUrl

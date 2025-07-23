@@ -9,6 +9,7 @@ using System;
 using MiniETicaret.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Text;
 
 namespace MiniETicaret.Persistence.Services;
 
@@ -23,10 +24,9 @@ public class OrderService : IOrderService
     {
         _context = context;
         _userManager = userManager;
-        _emailService = emailService;   
+        _emailService = emailService;
         _logger = logger;
     }
-
     public async Task<BaseResponse<Guid>> CreateAsync(OrderCreateDto dto, string buyerId)
     {
         var buyer = await _userManager.FindByIdAsync(buyerId);
@@ -38,7 +38,10 @@ public class OrderService : IOrderService
 
         foreach (var p in dto.Products)
         {
-            var product = await _context.Products.FindAsync(p.ProductId);
+            var product = await _context.Products
+                .Include(x => x.AppUser) // Seller-ə çıxmaq üçün
+                .FirstOrDefaultAsync(x => x.Id == p.ProductId);
+
             if (product == null || product.Stock < p.ProductCount)
                 return new BaseResponse<Guid>("Product not available or stock is insufficient", Guid.Empty, HttpStatusCode.BadRequest);
 
@@ -69,28 +72,79 @@ public class OrderService : IOrderService
 
         await _context.Orders.AddAsync(order);
         await _context.SaveChangesAsync();
+
         try
         {
+            // 1. Buyer-ə email
             string subject = "Sifarişiniz qəbul olundu!";
             string body = $"Sifariş nömrəsi: {order.Id}<br>Ümumi məbləğ: {order.TotalPrice} AZN";
             await _emailService.SendEmailAsync(
                 new[] { buyer.Email }, subject, body
             );
+
+            // 2. Seller-lərə email (hər seller üçün öz məhsullarının siyahısı ilə)
+            // SellerId-ləri uniq topla
+            var sellerIds = orderProducts
+                .Select(op =>
+                    _context.Products
+                        .Where(prod => prod.Id == op.ProductId)
+                        .Select(prod => prod.UserId)
+                        .FirstOrDefault())
+                .Distinct()
+                .ToList();
+
+            foreach (var sellerId in sellerIds)
+            {
+                var seller = await _userManager.FindByIdAsync(sellerId);
+                if (seller != null && !string.IsNullOrEmpty(seller.Email))
+                {
+                    // Sellerə aid bu orderdəki məhsulları tap
+                    var sellerProducts = orderProducts
+                        .Where(op =>
+                            _context.Products
+                                .Where(prod => prod.Id == op.ProductId)
+                                .Select(prod => prod.UserId)
+                                .FirstOrDefault() == sellerId)
+                        .ToList();
+
+                    var sb = new StringBuilder();
+                    sb.AppendLine($"Salam {seller.Fullname}, məhsulunuza yeni sifariş gəlib!<br>");
+                    sb.AppendLine($"Sifariş nömrəsi: {order.Id}<br><br>");
+                    sb.AppendLine("Satılan məhsullar:<br>");
+                    decimal sellerTotal = 0;
+                    foreach (var op in sellerProducts)
+                    {
+                        var product = await _context.Products.FindAsync(op.ProductId);
+                        decimal totalPrice = op.ProductCount * op.ProductPrice;
+                        sellerTotal += totalPrice;
+
+                        sb.AppendLine(
+                            $"- {product?.Title} | Say: {op.ProductCount} | Qiymət: {op.ProductPrice} AZN | Cəmi: {totalPrice} AZN<br>");
+                    }
+                    sb.AppendLine($"<br>Ümumi məbləğ: {sellerTotal} AZN");
+
+                    await _emailService.SendEmailAsync(
+                        new[] { seller.Email },
+                        "Məhsulunuza sifariş gəldi!",
+                        sb.ToString()
+                    );
+                }
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Order email notification failed. OrderId: {OrderId}, BuyerEmail: {BuyerEmail}", order.Id, buyer.Email);
         }
 
-
         return new BaseResponse<Guid>("Order created", order.Id, HttpStatusCode.Created);
     }
+
 
     public async Task<BaseResponse<List<OrderGetDto>>> GetMyOrdersAsync(string buyerId)
     {
         var orders = await _context.Orders
             .Include(o => o.OrderProducts).ThenInclude(op => op.Product)
-            .Where(o => o.AppUsers.Any(u => u.Id == buyerId))
+            .Where(o => o.AppUsers.Any(u => u.Id == buyerId) && !o.IsDeleted)
             .OrderByDescending(o => o.OrderDate)
             .ToListAsync();
 
@@ -102,7 +156,7 @@ public class OrderService : IOrderService
     {
         var orders = await _context.Orders
             .Include(o => o.OrderProducts).ThenInclude(op => op.Product)
-            .Where(o => o.OrderProducts.Any(op => op.Product.UserId == sellerId))
+            .Where(o => o.OrderProducts.Any(op => op.Product.UserId == sellerId) && !o.IsDeleted)
             .OrderByDescending(o => o.OrderDate)
             .ToListAsync();
 
@@ -115,7 +169,7 @@ public class OrderService : IOrderService
         var order = await _context.Orders
             .Include(o => o.OrderProducts).ThenInclude(op => op.Product)
             .Include(o => o.AppUsers)
-            .FirstOrDefaultAsync(o => o.Id == id);
+            .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
 
         if (order == null)
             return new BaseResponse<OrderGetDto>("Order not found", null, HttpStatusCode.NotFound);
@@ -135,7 +189,7 @@ public class OrderService : IOrderService
         var order = await _context.Orders
             .Include(o => o.AppUsers)
             .Include(o => o.OrderProducts).ThenInclude(op => op.Product)
-            .FirstOrDefaultAsync(o => o.Id == id);
+            .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
 
         if (order == null)
             return new BaseResponse<string>("Order not found", HttpStatusCode.NotFound);
@@ -151,12 +205,11 @@ public class OrderService : IOrderService
 
         return new BaseResponse<string>("Order status updated", HttpStatusCode.OK);
     }
-
     public async Task<BaseResponse<string>> DeleteAsync(Guid id, string userId, string role)
     {
         var order = await _context.Orders
             .Include(o => o.AppUsers)
-            .FirstOrDefaultAsync(o => o.Id == id);
+            .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
 
         if (order == null)
             return new BaseResponse<string>("Order not found", HttpStatusCode.NotFound);
@@ -166,12 +219,12 @@ public class OrderService : IOrderService
         if (!(isOwner || role == "Admin"))
             return new BaseResponse<string>("You do not have permission to delete this order", HttpStatusCode.Forbidden);
 
-        _context.Orders.Remove(order);
+        order.IsDeleted = true;
+        _context.Orders.Update(order);
         await _context.SaveChangesAsync();
 
         return new BaseResponse<string>("Order deleted", HttpStatusCode.OK);
     }
-
     public async Task<BaseResponse<List<OrderGetDto>>> GetAllAsync(string role)
     {
         if (role != "Admin")
@@ -179,6 +232,7 @@ public class OrderService : IOrderService
 
         var orders = await _context.Orders
             .Include(o => o.OrderProducts).ThenInclude(op => op.Product)
+             .Where(o => !o.IsDeleted)
             .OrderByDescending(o => o.OrderDate)
             .ToListAsync();
 
@@ -204,7 +258,7 @@ public class OrderService : IOrderService
                 ProductName = op.Product?.Name,
                 ProductCount = op.ProductCount,
                 ProductPrice = op.ProductPrice
-                
+
             }).ToList()
         };
     }

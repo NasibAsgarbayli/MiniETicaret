@@ -101,6 +101,7 @@ public class RoleService : IRoleService
 
         roleList.Add(new RoleWithPermissionsDto
         {
+            Id=role.Id,
             Name = role.Name!,
             Permissions = permissions
         });

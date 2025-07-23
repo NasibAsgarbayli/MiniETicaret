@@ -11,15 +11,15 @@ public class BaseResponse<T>
 
     public BaseResponse(HttpStatusCode statusCode)
     {
-        Success = true;
+        Success = ((int)statusCode >= 200 && (int)statusCode < 300);
         StatusCode = statusCode;
 
     }
     public BaseResponse(string message, HttpStatusCode statusCode)
     {
         Message = message;
-        Success = false;
         Success = ((int)statusCode >= 200 && (int)statusCode < 300);
+        StatusCode = statusCode;
     }
 
     public BaseResponse(string message, bool isSuccess, HttpStatusCode statusCode)
@@ -30,7 +30,7 @@ public class BaseResponse<T>
     }
     public BaseResponse(string message, T? data, HttpStatusCode statusCode)
     {
-        Success = true;
+        Success = ((int)statusCode >= 200 && (int)statusCode < 300);
         Data = data;
         Message = message;
         StatusCode = statusCode;
