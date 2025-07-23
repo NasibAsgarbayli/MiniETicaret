@@ -27,7 +27,7 @@ namespace MiniETicaret.WebApi.Controllers
             return StatusCode((int)result.StatusCode, result);
         }
 
-        // GET /api/categories/{id}
+         // GET /api/categories/{id}
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(BaseResponse<CategoryGetDto>), (int)HttpStatusCode.OK)]
         [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.NotFound)]

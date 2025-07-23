@@ -12,6 +12,8 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using MiniETicaret.Application.Shared.Helpers;
 using MiniETicaret.WebApi.Middlewares;
+using Hangfire;
+using MiniETicaret.Application.Abstracts.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -65,6 +67,13 @@ builder.Services.AddDbContext<MiniETicaretDbContext>(options =>
 });
 builder.Services.RegisterService();
 
+builder.Services.AddHangfire(config =>
+    config.SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
+          .UseSimpleAssemblyNameTypeSerializer()
+          .UseRecommendedSerializerSettings()
+          .UseSqlServerStorage(builder.Configuration.GetConnectionString("Default")));
+
+
 builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
 {
     options.Password.RequiredLength = 8;
@@ -113,6 +122,8 @@ builder.Services.AddAuthorization(options =>
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 
 
+builder.Services.AddHangfireServer();
+
 
 var app = builder.Build();
 
@@ -121,14 +132,24 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.UseHangfireDashboard("/hangfire");
 }
 
 app.UseHttpsRedirection();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+
 app.UseAuthentication();
 
 app.UseAuthorization();
+
+app.UseHangfireDashboard("/hangfire");
+
+RecurringJob.AddOrUpdate<IJobService>(
+     "freeze-inactive-users",
+    service => service.FreezeInactiveUsersAsync(),
+    Cron.Daily
+    );
 
 app.MapControllers();
 

@@ -8,6 +8,9 @@ public class AppUser:IdentityUser
     public string? RefreshToken { get; set; }
     public DateTime ExpireDate { get; set; }
 
+    public DateTime? LastLoginDate { get; set; }
+
+    public bool IsFrozen { get; set; }
 
     public Guid? OrderId { get; set; }
     public Order? Order { get; set; }
