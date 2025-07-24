@@ -12,6 +12,8 @@ public class AppUser:IdentityUser
 
     public bool IsFrozen { get; set; }
 
+    public string? ProfileImageUrl { get; set; }
+
     public Guid? OrderId { get; set; }
     public Order? Order { get; set; }
     public ICollection<Product> Products { get; set; }   

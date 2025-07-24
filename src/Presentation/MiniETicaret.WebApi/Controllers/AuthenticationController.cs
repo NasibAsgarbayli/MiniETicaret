@@ -103,5 +103,29 @@ namespace MiniETicaret.WebApi.Controllers
 
         }
 
+        [HttpDelete]
+        [Authorize]
+        [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.InternalServerError)]
+        public async Task<IActionResult> DeleteProfilePhoto()
+        {
+            var result = await _authentication.DeleteProfilePhotoAsync(User);
+            return StatusCode((int)result.StatusCode, result);
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.BadRequest)]
+        [ProducesResponseType(typeof(BaseResponse<string>), (int)HttpStatusCode.InternalServerError)]
+        public async Task<IActionResult> UploadProfilePhoto([FromForm] ProfilePhotoUploadDto dto)
+        {
+            var result = await _authentication.UploadProfilePhotoAsync(User, dto.Image);
+            return StatusCode((int)result.StatusCode, result);
+        }
+
+
+
     }
 }

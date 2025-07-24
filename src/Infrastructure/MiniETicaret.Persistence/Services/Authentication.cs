@@ -18,6 +18,7 @@ using Microsoft.EntityFrameworkCore;
 using MiniETicaret.Application.DTOs.ProductDtos;
 using MiniETicaret.Persistence.Contexts;
 using Hangfire;
+using Microsoft.AspNetCore.Http;
 
 namespace MiniETicaret.Persistence.Services;
 
@@ -32,8 +33,9 @@ public class Authentication : IAuthentication
     private readonly IEmailService _mailService;
     private readonly MiniETicaretDbContext _context;
     private readonly IJobService _jobService;
+    private readonly IPhotoService _photoService;
 
-    public Authentication(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IOptions<JwtSettings> jwtSetting, RoleManager<IdentityRole> roleManager, IEmailService mailService, MiniETicaretDbContext context, IJobService jobService)
+    public Authentication(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IOptions<JwtSettings> jwtSetting, RoleManager<IdentityRole> roleManager, IEmailService mailService, MiniETicaretDbContext context, IJobService jobService,IPhotoService photoService)
 
     {
         _userManager = userManager;
@@ -43,6 +45,7 @@ public class Authentication : IAuthentication
         _mailService = mailService;
         _context = context;
         _jobService = jobService;
+        _photoService = photoService;
     }
 
     public async Task<BaseResponse<ProfilInfoDto>> GetProfileAsync(ClaimsPrincipal userPrincipal)
@@ -362,6 +365,67 @@ public class Authentication : IAuthentication
         var link = $"https://localhost:7045/api/Accounts/SendResetConfirmEmail?email={user.Email}&token={HttpUtility.UrlEncode(token)}";
         Console.WriteLine("Reset Password Link : " + link);
         return link;
+    }
+
+    public async Task<BaseResponse<string>> UploadProfilePhotoAsync(ClaimsPrincipal userPrincipal, IFormFile file)
+    {
+        var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId == null)
+            return new("Unauthorized", HttpStatusCode.Unauthorized);
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return new("User not found", HttpStatusCode.NotFound);
+
+        if (file == null || file.Length == 0)
+            return new("File is empty", HttpStatusCode.BadRequest);
+
+        var uploadResult = await _photoService.UploadAsync(file, "profiles");
+
+
+        if (!uploadResult.Success)
+            return new(uploadResult.Message, HttpStatusCode.InternalServerError);
+
+        user.ProfileImageUrl = uploadResult.Data;
+        var updateResult = await _userManager.UpdateAsync(user);
+
+        if (!updateResult.Succeeded)
+        {
+            var errors = string.Join(", ", updateResult.Errors.Select(e => e.Description));
+            return new($"Failed to update user: {errors}", HttpStatusCode.InternalServerError);
+        }
+
+        return new("Profile photo uploaded!", user.ProfileImageUrl, HttpStatusCode.OK);
+    }
+
+
+    public async Task<BaseResponse<string>> DeleteProfilePhotoAsync(ClaimsPrincipal userPrincipal)
+    {
+        var userId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId == null)
+            return new("Unauthorized", HttpStatusCode.Unauthorized);
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return new("User not found", HttpStatusCode.NotFound);
+
+        if (string.IsNullOrEmpty(user.ProfileImageUrl))
+            return new("No profile image to delete", HttpStatusCode.BadRequest);
+
+        var deleteResult = await _photoService.DeleteAsync(user.ProfileImageUrl);
+        if (!deleteResult.Success)
+            return new(deleteResult.Message, HttpStatusCode.InternalServerError);
+
+        user.ProfileImageUrl = null;
+        var updateResult = await _userManager.UpdateAsync(user);
+
+        if (!updateResult.Succeeded)
+        {
+            var errors = string.Join(", ", updateResult.Errors.Select(e => e.Description));
+            return new($"Failed to update user: {errors}", HttpStatusCode.InternalServerError);
+        }
+
+        return new("Profile photo deleted successfully!", (string?)null, HttpStatusCode.OK);
     }
 
 

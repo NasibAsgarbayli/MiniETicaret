@@ -32,6 +32,7 @@ public static class ServiceRegistration
         services.AddScoped<IFavouriteService, FavouriteService>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IJobService, JobService>();
+        services.AddScoped<IPhotoService, PhotoService>();
         #endregion
     }
 }

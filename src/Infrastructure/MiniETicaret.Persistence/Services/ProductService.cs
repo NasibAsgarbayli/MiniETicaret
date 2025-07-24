@@ -16,12 +16,14 @@ public class ProductService : IProductService
     private readonly MiniETicaretDbContext _context;
     private readonly UserManager<AppUser> _userManager;
     private readonly IFileService _fileService;
+    private readonly IPhotoService _photoService;
 
-    public ProductService(MiniETicaretDbContext context, UserManager<AppUser> userManager, IFileService fileService)
+    public ProductService(MiniETicaretDbContext context, UserManager<AppUser> userManager, IFileService fileService,IPhotoService photoService)
     {
         _context = context;
         _userManager = userManager;
         _fileService = fileService;
+        _photoService = photoService;
     }
 
     public async Task<BaseResponse<Guid>> CreateAsync(ProductCreateDto dto, string sellerId)
@@ -168,20 +170,27 @@ public class ProductService : IProductService
         if (product.UserId != sellerId)
             return new BaseResponse<string>("You do not have permission to add image to this product", HttpStatusCode.Forbidden);
 
+        if (dto.Image == null)
+            return new BaseResponse<string>("Image is empty", HttpStatusCode.BadRequest);
+
+        var uploadResult = await _photoService.UploadAsync(dto.Image, "products");
+        if (!uploadResult.Success)
+            return uploadResult;
+
         string imageUrl = null;
         if (dto.Image != null)
             imageUrl = await _fileService.UploadAsync(dto.Image);
 
         var image = new Image
         {
-            ImageUrl = imageUrl,
+            ImageUrl = uploadResult.Data,
             ProductId = productId
         };
 
         product.Images.Add(image);
         await _context.SaveChangesAsync();
 
-        return new BaseResponse<string>("Image added to product", HttpStatusCode.Created);
+        return new BaseResponse<string>("Image added to product", uploadResult.Data,HttpStatusCode.Created);
     }
 
 
@@ -200,6 +209,11 @@ public class ProductService : IProductService
         var image = product.Images.FirstOrDefault(i => i.Id == imageId && !i.IsDeleted);
         if (image == null)
             return new BaseResponse<string>("Image not found", HttpStatusCode.NotFound);
+
+
+        var deleteResult = await _photoService.DeleteAsync(image.ImageUrl);
+        if (!deleteResult.Success)
+            return deleteResult;
 
         image.IsDeleted = true;
 
